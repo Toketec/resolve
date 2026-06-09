@@ -1,0 +1,240 @@
+import Link from "next/link";
+import { Cpu, Globe2, Newspaper, Radio, ShieldCheck, Activity } from "lucide-react";
+import { MOCK_AGENTS, MOCK_MARKETS } from "@/lib/mock";
+import { formatPct } from "@/lib/utils";
+
+const KIND_ICON: Record<string, React.ReactNode> = {
+  "exchange-oracle": <Activity className="size-5" strokeWidth={2.5} />,
+  "media-oracle": <Newspaper className="size-5" strokeWidth={2.5} />,
+  "onchain-oracle": <Cpu className="size-5" strokeWidth={2.5} />,
+  "sports-feed": <Radio className="size-5" strokeWidth={2.5} />,
+  "weather-feed": <Globe2 className="size-5" strokeWidth={2.5} />,
+  "election-monitor": <ShieldCheck className="size-5" strokeWidth={2.5} />,
+};
+
+const STATUS_BG: Record<string, string> = {
+  online: "bg-pitch-500",
+  syncing: "bg-goal-500",
+  offline: "bg-magenta-500",
+};
+
+const TONE_BY_INDEX = [
+  { bg: "bg-royal-500", ink: "light" as const },
+  { bg: "bg-pitch-500", ink: "dark" as const },
+  { bg: "bg-magenta-500", ink: "light" as const },
+  { bg: "bg-goal-500", ink: "dark" as const },
+  { bg: "bg-cyan-500", ink: "dark" as const },
+  { bg: "bg-indigo-500", ink: "light" as const },
+];
+
+export default function AgentsPage() {
+  const recent = MOCK_MARKETS.filter((m) => m.status === "resolved" || m.status === "resolving");
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-3xl border-2 border-ink bg-ink p-8 text-canvas shadow-stamp-lg sm:p-14">
+        <span aria-hidden className="pointer-events-none absolute inset-0 opacity-25 pattern-dots-light" />
+        <span aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-44 rounded-full border-2 border-canvas bg-pitch-500" />
+        <span aria-hidden className="pointer-events-none absolute -bottom-12 right-32 hidden size-28 rounded-tl-full bg-goal-500 sm:block" />
+        <div className="relative">
+          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-pitch-500">
+            Oracle network
+          </span>
+          <h1 className="font-display mt-4 text-5xl font-black uppercase leading-[0.9] tracking-tight sm:text-8xl">
+            Six oracles.<br />
+            <span className="text-pitch-500">Always on.</span>
+          </h1>
+          <p className="mt-6 max-w-2xl text-base font-medium text-canvas/85">
+            Each oracle is an independent AI agent reading a different slice of
+            reality. They never see each other&apos;s output until they vote.
+            Consensus is verifiable. Disagreement is logged.
+          </p>
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Kpi label="Active" value="6" />
+            <Kpi label="Resolutions" value="19,351" />
+            <Kpi label="Uptime" value="99.91%" accent="text-pitch-500" />
+            <Kpi label="Avg conf" value="92%" accent="text-goal-500" />
+          </div>
+        </div>
+      </section>
+
+      {/* Agent grid */}
+      <section className="mt-14">
+        <header className="mb-8 flex flex-col gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-royal-700">
+            Fleet
+          </span>
+          <h2 className="font-display text-4xl font-black uppercase tracking-tight text-ink sm:text-5xl">
+            Meet the agents.
+          </h2>
+        </header>
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {MOCK_AGENTS.map((a, i) => {
+            const tone = TONE_BY_INDEX[i % TONE_BY_INDEX.length];
+            const inkClass = tone.ink === "light" ? "text-canvas" : "text-ink";
+            const dimClass = tone.ink === "light" ? "text-canvas/80" : "text-ink/70";
+            return (
+              <div
+                key={a.id}
+                className={`relative overflow-hidden rounded-3xl border-2 border-ink p-6 shadow-stamp transition hover:-translate-y-0.5 hover:shadow-stamp-lg ${tone.bg} ${inkClass}`}
+              >
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute inset-0 opacity-25 ${
+                    tone.ink === "light" ? "pattern-dots-light" : "pattern-dots"
+                  }`}
+                />
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-9 items-center justify-center rounded-xl border-2 border-current">
+                      {KIND_ICON[a.kind]}
+                    </span>
+                    <p className={`font-score text-[10px] font-bold uppercase tracking-[0.18em] ${dimClass}`}>
+                      {a.callsign}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border-2 border-ink ${STATUS_BG[a.status]} px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink`}
+                  >
+                    <span className="pulse-dot inline-block size-1.5 rounded-full bg-ink" />
+                    {a.status}
+                  </span>
+                </div>
+                <h3 className="font-display relative mt-5 text-3xl font-black uppercase leading-[0.92] tracking-tight">
+                  {a.name}
+                </h3>
+                <p className={`relative mt-3 text-sm font-medium ${dimClass}`}>{a.description}</p>
+                <div className="relative mt-5 grid grid-cols-2 gap-2">
+                  <Mini label="Uptime" value={formatPct(a.uptimePct, 2)} tone={tone.ink} />
+                  <Mini label="Accuracy" value={formatPct(a.accuracyPct, 1)} tone={tone.ink} />
+                  <Mini label="Resolutions" value={a.resolutions.toLocaleString()} tone={tone.ink} />
+                  <Mini label="Avg conf" value={formatPct(a.avgConfidence)} tone={tone.ink} />
+                </div>
+                <div className={`font-score relative mt-4 flex flex-wrap items-center justify-between gap-2 border-t-2 border-current pt-3 text-[10px] font-bold uppercase tracking-wider ${dimClass}`}>
+                  <span>model · {a.modelHint}</span>
+                  <span>{a.region}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Recent deliberations */}
+      <section className="mt-14">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-700">
+              Recent deliberations
+            </span>
+            <h2 className="font-display mt-2 text-3xl font-black uppercase tracking-tight text-ink sm:text-4xl">
+              Latest calls.
+            </h2>
+          </div>
+          <Link href="/markets" className="text-sm font-black uppercase tracking-wider text-ink hover:text-magenta-500">
+            view all →
+          </Link>
+        </div>
+        <div className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-ink bg-raised text-left">
+                {["Market", "Status", "Confidence", "Outcome", "Votes"].map((h, i) => (
+                  <th
+                    key={h}
+                    className={`font-score px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted ${
+                      i > 1 ? "text-right" : ""
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((m) => (
+                <tr key={m.id} className="border-b border-line last:border-0 hover:bg-raised/60">
+                  <td className="px-4 py-3">
+                    <Link href={`/markets/${m.slug}`} className="font-semibold text-ink hover:text-royal-500">
+                      {m.title}
+                    </Link>
+                    <p className="font-score mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                      {m.category}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className="font-score text-[10px] font-bold uppercase tracking-wider"
+                      style={{
+                        color: m.status === "resolved" ? "#0A0A0A" : "#E69500",
+                      }}
+                    >
+                      {m.status}
+                    </span>
+                  </td>
+                  <td className="font-score px-4 py-3 text-right text-sm font-bold text-ink">
+                    {m.consensus ? formatPct(m.consensus.confidence) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span
+                      className="font-display text-base font-black"
+                      style={{
+                        color:
+                          m.consensus?.outcome === "YES"
+                            ? "#00B14F"
+                            : m.consensus?.outcome === "NO"
+                            ? "#FF2D6F"
+                            : "#5B5B58",
+                      }}
+                    >
+                      {m.consensus?.outcome ?? "—"}
+                    </span>
+                  </td>
+                  <td className="font-score px-4 py-3 text-right text-sm font-bold text-ink">
+                    {m.consensus?.votes.length ?? 0} / 4
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function Kpi({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="rounded-2xl border-2 border-canvas/40 bg-canvas/10 px-4 py-3 backdrop-blur">
+      <p className="font-score text-[10px] font-bold uppercase tracking-wider text-canvas/65">
+        {label}
+      </p>
+      <p className={`font-display mt-1 text-2xl font-black tabular-nums ${accent ?? "text-canvas"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function Mini({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "light" | "dark";
+}) {
+  const bg = tone === "light" ? "bg-canvas/15 border-canvas/40" : "bg-ink/8 border-ink/30";
+  const labelClass = tone === "light" ? "text-canvas/65" : "text-ink/55";
+  return (
+    <div className={`rounded-xl border-2 ${bg} px-2.5 py-1.5`}>
+      <p className={`font-score text-[10px] font-bold uppercase tracking-wider ${labelClass}`}>
+        {label}
+      </p>
+      <p className="font-score text-sm font-bold">{value}</p>
+    </div>
+  );
+}
