@@ -1,15 +1,12 @@
 # RESOLVE — AI-native Prediction Markets
 
-> **Hackathon**: HTX GENESIS × B.AI
-> **Deadline**: Submit July 5, 2026
-> **Final**: Shanghai WAIC July 17–18
 > **Monorepo**: `@resolve/web` (Next.js) + `@resolve/ai` (oracle logic) + `@resolve/shared` (types)
 
 ## Project Overview
 
 Polymarket-like prediction markets where AI agents (not humans or centralized oracles) resolve outcomes. Users create markets, trade YES/NO positions, and when a market expires, multiple AI agents independently gather evidence and reach consensus to auto-settle.
 
-**Hero Demo**: Connect TronLink → buy YES on a testnet market → market expires → AI agents deliberate → consensus reached → testnet payout.
+**Demo Flow**: Connect TronLink → buy YES on a testnet market → market expires → AI agents deliberate → consensus reached → testnet payout.
 
 ## Team
 

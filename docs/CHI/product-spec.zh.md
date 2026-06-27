@@ -18,7 +18,7 @@
 | HTX 生态契合度 | 15 | Dev A（TRON 赔付、8004/x402）+ Dev C（HTX 数据） |
 | 演示表现 | 10 | Dev B（路演）+ Dev C（demo 操作） |
 
-Genesis 赛道（AI + Web3 结合）有加分；**最佳 AI+Web3 融合**特别奖为 $1,500。RESOLVE 是教科书式的 Genesis 参赛项目。
+Genesis 赛道（AI + Web3 结合）有加分。RESOLVE 是教科书式的 Genesis 参赛项目。
 
 ## 2. 英雄镜头（Q2）——唯一必须完美的东西
 

@@ -18,7 +18,7 @@ Build a real launchable product *after* winning, using the prize / B.AI compute 
 | HTX Ecosystem Fit | 15 | Dev A (TRON payout, 8004/x402) + Dev C (HTX feed) |
 | Presentation | 10 | Dev B (pitch) + Dev C (demo driver) |
 
-Genesis Track (AI + Web3 combined) earns bonus points; the **Best AI+Web3 Fusion** special award is $1,500. RESOLVE is a textbook Genesis entry.
+Genesis Track (AI + Web3 combined) earns bonus points. RESOLVE is a textbook Genesis entry.
 
 ## 2. The hero shot (Q2) — the single thing that must be flawless
 
