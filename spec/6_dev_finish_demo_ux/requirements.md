@@ -17,6 +17,8 @@
 - ✅ Loading 状态: API 调用期间显示骨架屏/加载动画
 - ✅ Error 处理: API 失败时不崩溃，显示友好的 retry 提示
 - ✅ 市场详情页: resolving 状态的实时反馈（轮询 resolve API）
+- ✅ 🆕 **B.AI 8004展示**: Agent详情/Tooltip中显示8004 ID + Tronscan链接按钮
+- ✅ 🆕 **x402展示**: ConsensusReached后显示x402交易哈希 + 链上链接
 - ❌ 不做完整 45 秒 demo 排练脚本（那是 Dev B 路演准备的事）
 - ❌ 不做 pitch deck（那是 Dev B 的范围）
 
@@ -35,4 +37,6 @@
 5. UI 中所有 USDC 被替换为 USDD（TradePanel、KPI、描述文字）
 6. API loading 状态有骨架屏或 spin indicator
 7. API error 状态显示重试按钮 + 不崩溃
-8. `pnpm typecheck` + `pnpm build` 通过
+8. 🆕 Agent 8004 身份卡片可见，点击可跳转 Tronscan
+9. 🆕 x402 交易哈希在 ConsensusMeter 下方可见，点击可跳转
+10. `pnpm typecheck` + `pnpm build` 通过

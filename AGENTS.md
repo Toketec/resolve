@@ -31,6 +31,19 @@ Polymarket-like prediction markets where AI agents (not humans or centralized or
 **AI 使用规则**：Hermes Agent（公孙离）按 `plan.md` 执行任务，完成后更新 `tasks.md` 状态。每完成一项打勾。
 **🛑 提交规则**：禁止自动 `git commit` 或 `git push`。任何提交前必须向用户展示改动内容并**明确询问**（"可以提交了吗？"），获得用户口头确认后方可执行。包括但不限于：代码改动、文档更新、spec 状态更新、配置文件修改。
 
+## Architecture
+
+See [docs/architecture-overview.md](docs/architecture-overview.md) for full system architecture.
+
+**Key architecture decisions**:
+- Deploy: Vercel Serverless only (free Hobby plan, no ICP filing)
+- Backend: Next.js API Routes (no separate server)
+- Data: JSON + in-memory (no database needed for demo)
+- HTX ecosystem: 3 integrations (HTX API price data + B.AI 8004 + B.AI x402)
+- Agent identity: Register AI Agent on TRON via B.AI 8004 protocol
+- Agent payment: x402 micropayment on consensus reached
+- Domain: `resolve-prediction.vercel.app` (default Vercel subdomain)
+
 ## Commands
 
 ```bash

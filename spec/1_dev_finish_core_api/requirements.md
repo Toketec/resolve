@@ -40,3 +40,6 @@
 - Mock 数据内容不变，仍在内存中，但通过 API 路由暴露而非直接 import
 - API 路由路径不与未来真实路径冲突（未来真实调用只需替换 handler 实现）
 - 保持向后兼容 —— 所有 handler 返回与当前 mock 形状相同的数据
+- **架构背景**: 详见 [架构设计](../architecture-overview.md)。部署于 Vercel Serverless，使用 Next.js API Routes 作为唯一后端
+- **HTX生态**: `GET /api/price/:symbol` 需预留真实 HTX API 调用的代理路径（未来可直接 -> `api.htx.com/market/detail/merged`）
+- **域名**: 使用 `resolve-prediction.vercel.app`（Vercel 默认子域名），零ICP备案

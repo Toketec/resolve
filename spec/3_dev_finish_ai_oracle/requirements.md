@@ -16,6 +16,7 @@
 - ✅ 精选证据集——针对英雄市场预取证据，避免实时抓取的脆弱性
 - ✅ 更新 `packages/ai` 的 `resolveMarket()`
 - ✅ 支持环境变量配置 API key
+- ✅ **HTX价格数据作为Agent证据源**: BULL-1(交易所Agent)消费HTX公开API的BTC/USDT价格作为推理依据
 - ❌ 不实现实时网页抓取（用精选证据集代替）
 - ❌ 不实现 B.AI 8004/x402 集成（那是 spec 4 的范围）
 - ❌ 不处理 API rate limit — 英雄镜头最多 3 次调用
@@ -43,3 +44,4 @@
 - Claude 模型使用 `claude-sonnet-4`（平衡速度/质量）
 - 不处理 token 计费/用量追踪
 - 精选证据集需要由 Dev B 提前准备（此 spec 提供模板）
+- **HTX生态证据**: BULL-1 Agent 的证据集中应当包含来自 HTX 公开API的实时BTC价格数据。代理路径: `GET /api/price/btcusdt`（由 spec 1 实现）

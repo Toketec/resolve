@@ -55,8 +55,8 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | A-04 | 测试网买入(单边签名) | P0 | 4h | A-01 | 用户签名→支付USDD→仓位记录上链 |
 | A-05 | 测试网赔付 | P0 | 4h | A-03 | 共识达成后合约向赢家地址支付(TRC-20) |
 | A-06 | 气囊按钮(模拟赔付) | P1 | 2h | A-03 | 一键返回假txHash，UI不察觉差异 |
-| A-07 | 8004身份注册 | P1 | 4h | — | 在B.AI注册一个Agent身份，拿到8004 ID |
-| A-08 | x402支付集成 | P2 | 4h | A-07 | resolve()中触发一笔x402微支付 |
+| A-07 | 🆕 B.AI 8004 Agent身份注册 | **P0** (↑从P1) | 4h | — | **比赛关键加分项**。在B.AI注册Agent身份，拿到8004 ID。展示HTX生态使用 |
+| A-08 | 🆕 B.AI x402微支付集成 | **P0** (↑从P2) | 4h | A-07 | resolve()中触发x402支付，展示Agent经济自主性。比赛关键加分项 |
 | A-09 | api-contracts中settle()实现 | P0 | 2h | A-03 | 暴露出 `settle()` 供C的API路由调用 |
 
 **A 的依赖风险**: A-02(测试网有币)被其他项目方卡住→找主办方要测试币或手动领水。
@@ -111,11 +111,13 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | C-12 | A-06气囊按钮集成 | P1 | 1h | A-06 | 测试网不稳时一键切模拟模式 |
 | C-13 | 英雄镜头排练+脚本固化 | P0 | 4h | C-08 ~ C-11 | 一镜到底demo走5次全通无错 |
 | C-14 | 备用视频录制(Screenflow) | P0 | 2h | C-13 | 录制一个45-60s的完整演示录屏 |
-| C-15 | Vercel部署+HTTPS | P1 | 2h | — | 部署到Vercel, 可公网访问 |
+| C-15 | 🆕 Vercel部署+HTTPS（零ICP备案） | P0 | 2h | — | 部署到Vercel Hobby免费计划。`vercel.app` 子域名，零ICP备案，全球CDN |
 | C-16 | 提交材料(GitHub描述等) | P1 | 2h | — | GitHub README完善+项目简介 |
-| C-17 | AGENTS.md/CLAUDE.md更新 | P2 | 1h | — | 反映最终架构和dev命令 |
+| C-17 | 🆕 AGENTS.md/CLAUDE.md更新 | P2 | 1h | — | 反映最终架构和dev命令 |
+| C-18 | 🆕 B.AI 8004身份展示页 | P1 | 2h | A-07 | 在UI中展示Agent的8004 ID及链上证明链接 |
+| C-19 | 🆕 B.AI x402触发演示 | P1 | 2h | A-08 | 在consensus达成后触发x402支付并展示交易哈希 |
 
-**C 的关键路径**: C-01(C-03) → C-04 → C-05/C-06/C-07 → C-08/C-09 → C-13
+**C 的关键路径**: C-01(C-03) → C-04 → C-05/C-06/C-07 → C-08/C-09 → C-13 → C-18/C-19
 **C 的风险**: 如果A或B延迟，C可以通过mock确保前端不阻塞。C从第一天起就可以用mock工作。
 
 ---

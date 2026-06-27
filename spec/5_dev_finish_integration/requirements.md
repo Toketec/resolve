@@ -18,6 +18,8 @@
 - ✅ settle 按钮 → 调用 `POST /api/settle`
 - ✅ Agent 页面（/agents）从 `GET /api/agents` 读取
 - ✅ Portfolio 页面从 store 读取持仓
+- ✅ 🆕 **B.AI 8004身份展示** — Agent详情页增加8004 ID、链上链接
+- ✅ 🆕 **x402支付展示** — ConsensusMeter区域增加x402交易hash展示
 - ❌ 不实现投票浮现动画（那是 spec 6）
 - ❌ 不实现隐藏的"立即解析"触发器（那是 spec 6）
 - ❌ 不修改现有 mock 内容——只是切换数据源
@@ -37,6 +39,8 @@
 3. TradePanel 中点击 "Buy YES" → 通过 API 创建 Position
 4. 市场详情页的 Oracle deliberation 部分显示来自 resolve API 的数据
 5. Agent 页面从 API 读取
-6. `pnpm typecheck` + `pnpm build` 通过
-7. 开发环境 `next dev` 可正常访问所有页面
-8. 页面内容和结构迁移前后视觉无差异
+6. 🆕 Agent详情展示8004 ID并链接至Tronscan
+7. 🆕 ConsensusMeter下方展示x402交易哈希
+8. `pnpm typecheck` + `pnpm build` 通过
+9. 开发环境 `next dev` 可正常访问所有页面
+10. 页面内容和结构迁移前后视觉无差异
