@@ -42,7 +42,7 @@
 │  │                      │               │                  │     │
 │  │               ┌──────┴──────┐  ┌─────┴──────┐          │     │
 │  │               │ @resolve/   │  │ Data Layer  │          │     │
-│  │               │ shared      │  │ (JSON/内存)  │          │     │
+│  │               │ shared      │  │ (Supabase)  │          │     │
 │  │               │ (Types)     │  │            │          │     │
 │  │               └─────────────┘  └────────────┘          │     │
 │  └─────────────────────────────────────────────────────────┘     │
@@ -131,15 +131,20 @@
 
 | 数据 | 存储方式 | 说明 |
 |------|---------|------|
-| 市场价格 | 内存缓存 | 从HTX API获取，缓存5分钟 |
-| 用户仓位 | JSON文件 | 单用户，存储在 `/data/` 目录 |
-| Agent推理结果 | 内存 | 单次推理结果，结算后清除 |
-| 共识历史 | JSON文件 | 记录每次resolve结果供UI展示 |
+|| 市场价格 | 内存缓存 | 从HTX API获取，缓存5分钟 |
+|| 用户仓位 | **Supabase (PostgreSQL)** | `positions` 表，记录购入详情 |
+|| 市场数据 | **Supabase (PostgreSQL)** | `markets` 表，包含英雄市场种子数据 |
+|| Agent推理结果 | **Supabase (PostgreSQL)** | `agent_consensus` + `agent_votes` 表 |
+|| 共识历史 | **Supabase (PostgreSQL)** | 每次 resolve 结果持久化在 `agent_consensus` |
 
-**为何不用数据库**:
-- 黑客松场景只有一个英雄市场和一个用户（演示者）
-- JSON文件+内存完全够用，且零运维成本
-- 避免引入PostgreSQL/Supabase等额外依赖
+|**为什么用 Supabase**:
+|- 用户要求：正式产品不应有 mock 数据，后端真实数据 + 前端填充策略
+|- Supabase 免费 500MB PostgreSQL，与 Vercel 同一生态（Vercel Marketplace 集成）
+|- 有迁移路径：可用 pg_dump 备份，本地开发可用 Docker PostgreSQL
+|- 比 JSON 文件方案更可靠（Serverless 函数实例可能被回收）
+|- 未来扩展：PostgreSQL 是世界上扩展性最好的开源数据库
+
+**迁移路径**: Supabase PostgreSQL → 独立 PostgreSQL → RDS/Aurora（数据格式不变）|
 
 ---
 
@@ -212,8 +217,8 @@
 | AI推理 | Claude API 按用量（预计$20-50） | $20-50 |
 | SSL证书 | Vercel 自动 Let's Encrypt | $0 |
 | CDN | Vercel Edge Network | $0 |
-| 数据库 | JSON文件（无DB） | $0 |
-| **总计** | | **≈ $20-50**（仅AI推理费用）|
+|| 数据库 | Supabase PostgreSQL（免费500MB） | $0 |
+|| **总计** | | **≈ $20-50**（仅AI推理费用）|
 
 **对比阿里云方案**: ECS 最低配 ¥500+/月 + 域名备案 10-20工作日 + CDN ¥100+/月 + RDS ¥100+/月 = ❌ 成本高+备案慢
 
@@ -262,14 +267,21 @@
    - x402 → AI Agent 经济自主性
 3. 三者均为免费/低成本
 
-### ADR-004: JSON文件存储替代数据库
+### ADR-004（已变更）: JSON文件存储替代数据库 → Supabase PostgreSQL
 
-**选择**: JSON + 内存
+**初始选择**: JSON + 内存（2026-06-27 初期设计）
+
+**变更记录**: 2026-06-27 (v2) — 用户要求产品正式上线，替换为 Supabase PostgreSQL
+
+**当前选择**: Supabase (PostgreSQL) — 免费 500MB，与 Vercel 同一生态
+
 **理由**:
-1. 单用户演示场景
-2. Serverless Function 不需要持久化DB
-3. 零运维、零成本
-4. 如需扩展可迁到 SQLite（写入 `tmp/` 目录）
+1. 用户要求"产品开发完成为目标"，需要正式数据库
+2. Vercel Serverless 函数实例可能被回收，JSON 写入不可靠
+3. Supabase 免费方案足够支撑 Demo 场景
+4. PostgreSQL 迁移路径清晰：Supabase → 独立PG → RDS
+
+**代价**: 增加少量 latency（Vercel us-east-1 → Supabase us-east-1 通常 < 10ms）
 
 ---
 
@@ -282,6 +294,8 @@ apps/web (Next.js 16)
   │     ├── anthropic-sdk (or openai)
   │     ├── @resolve/shared
   │     └── ...evidence data
+  ├── @resolve/db (Supabase client + data layer)
+  │     └── @supabase/supabase-js
   ├── @tronweb3/tronwallet-adapter
   ├── @tronweb3/tronweb
   ├── @bankofai/agent-wallet (8004 + x402)

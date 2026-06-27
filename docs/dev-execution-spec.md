@@ -103,7 +103,7 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | ID | 任务 | 优先级 | 预估工时 | 依赖 | 验收标准 |
 |:--:|------|:------:|:--------:|:----:|---------|
 | C-01 | API路由骨架 | P0 | 4h | — | `/api/markets/:slug/resolve`, `/api/buy`, `/api/settle`, `/api/price/:symbol` 路由定义好，返回mock |
-| C-02 | 最小数据层(内存/文件) | P0 | 3h | — | 存单一仓位+单一共识结果，不需要DB。JSON文件或Map |
+|| C-02 | Supabase数据层搭建 + Schema部署 | P0 | 3h | — | 在 Supabase SQL Editor 执行迁移，`markets/positions/agent_consensus/agent_votes` 四表创建完成，英雄市场种子数据插入 |
 | C-03 | HTX行情数据只读API | P1 | 2h | — | 通过HTX公开API获取BTC/USDT价格 |
 | C-04 | Walking Skeleton集成 | P0 | 4h | C-01, A-09(mock), B-06(mock) | 全部mock但真实API接口连通→UI端到端 |
 | C-05 | A-01集成(真实TronLink) | P0 | 2h | A-01 | Connect Wallet按钮指向真实TronLink连接 |

@@ -38,7 +38,7 @@ See [docs/architecture-overview.md](docs/architecture-overview.md) for full syst
 **Key architecture decisions**:
 - Deploy: Vercel Serverless only (free Hobby plan, no ICP filing)
 - Backend: Next.js API Routes (no separate server)
-- Data: JSON + in-memory (no database needed for demo)
+- Data: Supabase PostgreSQL (via @resolve/db package)
 - HTX ecosystem: 3 integrations (HTX API price data + B.AI 8004 + B.AI x402)
 - Agent identity: Register AI Agent on TRON via B.AI 8004 protocol
 - Agent payment: x402 micropayment on consensus reached
@@ -63,7 +63,8 @@ resolve/
 │   └── contracts/     # @resolve/contracts — Solidity
 ├── packages/
 │   ├── shared/        # @resolve/shared — Types + API contracts
-│   └── ai/            # @resolve/ai — Oracle logic
+│   ├── ai/            # @resolve/ai — Oracle logic
+│   └── db/            # @resolve/db — Supabase client + data layer
 ```
 
 ## Hero Market

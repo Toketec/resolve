@@ -266,8 +266,8 @@ Day 5 目标 (7/1):      ══════════════════�
 |------|------|
 | **部署平台** | Vercel Serverless（零成本，零ICP备案） |
 | **后端形式** | Next.js API Routes（无独立后端） |
-| **数据存储** | JSON文件 + 内存（无数据库） |
-| **HTX生态** | 使用3项：HTX API + B.AI 8004 + B.AI x402 |
+|| **数据存储** | Supabase PostgreSQL（替代 JSON+内存） |
+|| **HTX生态** | 使用3项：HTX API + B.AI 8004 + B.AI x402 |
 | **基础设施成本** | $20-50（仅AI推理费用）|
 | **域名** | `resolve-prediction.vercel.app`（不加自定义域名）|
 | **AI推理** | Claude API（主）/ DeepSeek备选 |
