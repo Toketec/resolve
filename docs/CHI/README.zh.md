@@ -12,6 +12,13 @@ HTX Genesis 黑客松构建的唯一事实来源。源自已锁定的规划讨�
 | [workload-split.zh.md](./workload-split.zh.md) | 12 项锁定后的三人分工（A / B / C）及排期。 |
 | [api-contracts.zh.md](./api-contracts.zh.md) | A、B、C 共同构建的第一天接口，让三块并行不阻塞。 |
 | [open-questions.zh.md](./open-questions.zh.md) | 从代码中浮现的 8 个未决机制（G1–G8）。**写代码前必读。** |
+|
+| ## 新增（2026-06-27 作战规划） |
+|
+| 文档 | 内容 |
+|------|------|
+| [hackathon-battle-plan.md](../hackathon-battle-plan.md) | **总作战规划**——比赛全景、赛道策略、9天倒计时排期、评分权重策略、风险缓冲、各阶段交付物 |
+| [dev-execution-spec.md](../dev-execution-spec.md) | **Dev执行任务规格**——按A/B/C切片的35+项具体任务、验收标准、依赖关系、集成时间线、代码规范 |
 
 ## 一段话总结
 

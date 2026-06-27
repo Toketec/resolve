@@ -12,6 +12,13 @@ Single source of truth for the HTX Genesis Hackathon build. Built from the locke
 | [workload-split.md](./workload-split.md) | The 3-dev split (A / B / C) after all 12 locks, with sequencing. |
 | [api-contracts.md](./api-contracts.md) | The day-1 interfaces A, B, C build against so slices stay parallel. |
 | [open-questions.md](./open-questions.md) | The 8 unresolved mechanics (G1–G8) surfaced from the code. **Read before coding.** |
+|
+| ## New (2026-06-27 Battle Planning) |
+|
+| Doc | What it covers |
+|-----|----------------|
+| [hackathon-battle-plan.md](../hackathon-battle-plan.md) | **Battle Plan** — full competition landscape, track strategy, 9-day countdown, scoring strategy, risk buffer, per-stage deliverables |
+| [dev-execution-spec.md](../dev-execution-spec.md) | **Dev Execution Spec** — 35+ tasks sliced by A/B/C with acceptance criteria, dependencies, integration timeline, code conventions |
 
 ## The one-paragraph summary
 
