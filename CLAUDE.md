@@ -18,3 +18,7 @@ All work specs live in `spec/N_phase_name/` as triples:
 | `tasks.md` | Task tracking — ID/description/status/Done checklist |
 
 **Granularity**: One spec group = 4-8h of solo work, independently executable.
+
+## 🛑 Git Rules
+- **NO auto-commit or auto-push.** Always present changes to the human and ask "May I commit?" before any `git commit` or `git push`.
+- This includes: code changes, doc updates, spec task status changes, config file edits.
