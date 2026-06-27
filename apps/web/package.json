@@ -1,14 +1,17 @@
 {
-  "name": "resolve",
+  "name": "@resolve/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@resolve/ai": "workspace:*",
+    "@resolve/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "country-language": "^0.1.7",
