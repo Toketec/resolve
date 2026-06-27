@@ -70,6 +70,12 @@ resolve/
 
 **Will Bitcoin close above $150,000 by Dec 31, 2026?**
 
-- 3 real AI agents (Claude), 3 historical mock agents shown in UI
+**Agent Pool**: 6 agents (3 ACTIVE + 3 STANDBY)
+
+| Tier | Agents | What they do |
+|:----|--------|-------------|
+| ⚡ **ACTIVE** (real Claude) | BULL-1(Exchange) / BEAR-1(Media) / NEUT-1(Onchain) | 3 parallel Claude calls → independent votes → weighted consensus |
+| 💤 **STANDBY** (UI display) | BULL-2(Tech) / BEAR-2(Regulation) / NEUT-2(Macro) | Shown in Agent Pool with STANDBY badge, no real inference |
+
 - Consensus threshold: 0.65
 - All original project history preserved under apps/web/

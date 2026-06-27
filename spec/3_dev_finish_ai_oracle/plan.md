@@ -4,9 +4,12 @@
 
 | Agent | ID | 角色 | Prompt 定位 |
 |-------|-----|------|-------------|
-| BULL-1 | agent-exchange | 交易所预言机 | 技术分析偏多: BTC 价格趋势、成交量、HTX 订单簿信号 |
-| BEAR-1 | agent-media | 媒体预言机 | 基本面偏保守: 新闻情绪、监管动态、宏观风险 |
-| NEUT-1 | agent-onchain | 链上预言机 | 数据驱动中性: 链上持仓、大额转账、矿工活动 |
+| BULL-1 | agent-exchange | ⚡ ACTIVE | 交易所预言机 | 技术分析偏多: BTC 价格趋势、成交量、HTX 订单簿信号 |
+| BEAR-1 | agent-media | ⚡ ACTIVE | 媒体预言机 | 基本面偏保守: 新闻情绪、监管动态、宏观风险 |
+| NEUT-1 | agent-onchain | ⚡ ACTIVE | 链上预言机 | 数据驱动中性: 链上持仓、大额转账、矿工活动 |
+| BULL-2 | agent-tech | 💤 STANDBY | 技术预言机（备用） | 展示用 — 无真实 prompt |
+| BEAR-2 | agent-regulation | 💤 STANDBY | 监管预言机（备用） | 展示用 — 无真实 prompt |
+| NEUT-2 | agent-macro | 💤 STANDBY | 宏观预言机（备用） | 展示用 — 无真实 prompt |
 
 ## Step 1: 安装 Anthropic SDK
 

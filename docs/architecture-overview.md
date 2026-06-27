@@ -103,7 +103,8 @@
 
 | 组件 | 说明 |
 |------|------|
-| Agent 推理引擎 | 3个Agent独立调用 Claude API，返回 `{outcome, confidence, evidence}` |
+| Agent 推理引擎 | **Pool of 6 agents**: 3 ACTIVE (真实 Claude 推理) + 3 STANDBY (UI 展示) |
+| | 3 个 ACTIVE Agent 独立调用 Claude API，返回 `{outcome, confidence, evidence}` |
 | 证据收集器 | 从HTX API + 预精选证据集收集数据，喂给对应Agent |
 | 共识引擎 | 加权投票 → 加权共识。阈值 ≥ 0.65 |
 | 确定性护栏 | 英雄市场预演确保固定证据集下输出稳定 |

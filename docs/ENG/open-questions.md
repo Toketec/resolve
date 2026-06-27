@@ -68,7 +68,18 @@ Status: **unresolved mechanics.** The grill (Q1–Q12) locked *strategy* — who
 
 **Recommendation:** **3 real reasoning agents.** Matches the spec, cheaper (3 LLM calls), cleaner consensus. Display 6 as "online" on the agents page; only 3 actually deliberate on the hero market.
 
-**Decision:** _______________
+**Decision:** ✅ **Confirmed — 3 real ACTIVE + 3 STANDBY (6 total displayed)**
+
+| Tier | Count | Details |
+|:----|:-----:|---------|
+| **ACTIVE** (real Claude reasoning) | 3 | BULL-1(Exchange) / BEAR-1(Media) / NEUT-1(Onchain) — called in parallel per resolve |
+| **STANDBY** (UI display only) | 3 | BULL-2 / BEAR-2 / NEUT-2 — shown in Agent Pool with STANDBY badge, no real inference |
+
+**Design advantages (for Q&A)**:
+1. **Honest** — UI clearly distinguishes ACTIVE vs STANDBY, judges won't feel misled
+2. **Best bang for the buck** — 3 real = 6 real in scoring (AI/Web3 score is about *authenticity of reasoning*, not agent count), but half the dev time and half the demo time
+3. **Demo pacing** — 3 parallel Claude calls ≈ 8 seconds, fits in a 45s one-shot demo
+4. **Scalable architecture** — Agent Pool scales from 6 → N; "dynamically activate the 3 most relevant agents from the pool" sounds like architecture, not a shortcut
 
 ---
 
@@ -103,7 +114,7 @@ Status: **unresolved mechanics.** The grill (Q1–Q12) locked *strategy* — who
 | G3 | USDD not USDC | default → accept | C |
 | G4 | Scripted vote reveal | default → accept | C |
 | G5 | On-demand expiry trigger | default → accept | C |
-| **G6** | **Agent count (rec: 3)** | **needs decision** | **B** |
+| **G6** | **Agent count (decided: 3 real + 3 STANDBY)** | **✅ decided** | **B** |
 | G7 | `walletAddress` on position | default → accept | A + C |
 | **G8** | **Hero market (rec: B authors)** | **needs decision** | **B** |
 

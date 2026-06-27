@@ -8,7 +8,7 @@
 
 ## 工作边界
 
-- ✅ 设计 3 个 Agent 角色 prompt（交易所/媒体/链上）
+- ✅ 设计 3 个 Agent 角色 prompt（交易所/媒体/链上）— **外加 3 个 STANDBY agent 定义（UI 展示用，不写 prompt）**
 - ✅ 实现真实 Claude API 调用 → parse 为结构化 {outcome, confidence, evidence}
 - ✅ 3 个 Agent 并行调用（Promise.all）→ 收集所有投票
 - ✅ 加权共识数学（已有草图，需微调）
