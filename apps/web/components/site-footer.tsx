@@ -24,7 +24,7 @@ export function SiteFooter() {
           <Col title={t("footer.ecosystem")} tone="text-crowd-700" items={[
             { href: "#", label: "HTX ecosystem" },
             { href: "#", label: "B.AI compute" },
-            { href: "#", label: "Genesis ecosystem" },
+            { href: "#", label: "Genesis hackathon" },
           ]} />
           <Col title={t("footer.company")} tone="text-magenta-700" items={[
             { href: "#", label: t("footer.about") },
