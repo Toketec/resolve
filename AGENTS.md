@@ -19,6 +19,20 @@ Polymarket-like prediction markets where AI agents (not humans or centralized or
 | **Dev B** (AI/路演) | Real Claude reasoning, curated evidence, consensus math, then pitch deck | 主角 |
 | **Dev C** (应用/接缝) | Next.js, API routes, data layer, HTX price data, buy UI, live demo, deploy | 公孙离 |
 
+## Spec Convention
+
+所有开发规格以「一组三文档」形式存放在 `spec/N_phase_name/` 目录下：
+
+| 文件 | 内容 |
+|------|------|
+| `requirements.md` | 解决什么问题、依赖项、验收标准、边界说明 |
+| `plan.md` | 实现执行计划——步骤、顺序、依赖、文件路径、注意事项 |
+| `tasks.md` | 任务项跟踪——每项 ID/描述/状态/Done 检查条件 |
+
+**粒度原则**：事物边界清晰、能独立解决的中等任务单位。一个规格组应可在 4-8 小时内由单人或子 agent 完整完成。
+
+**AI 使用规则**：Hermes Agent（公孙离）按 `plan.md` 执行任务，完成后更新 `tasks.md` 状态。每完成一项打勾。
+
 ## Commands
 
 ```bash

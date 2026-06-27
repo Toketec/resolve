@@ -1,0 +1,29 @@
+# 5_dev_finish_integration — Tasks
+
+## 任务列表
+
+| ID | 任务 | 状态 | 工时 | 备注 |
+|:--:|------|:----:|:----:|------|
+| 5.1 | 创建 `lib/api-client.ts` — 通用 fetch + 各业务方法 | ☐ | 45min | |
+| 5.2 | 修改 `app/page.tsx` — 首页从 API 获取数据 | ☐ | 30min | client component |
+| 5.3 | 修改 `app/markets/page.tsx` — 市场列表从 API | ☐ | 30min | 查看渲染模式 |
+| 5.4 | 修改 `app/markets/[slug]/page.tsx` — 详情从 API | ☐ | 45min | 服务端 fetch |
+| 5.5 | 修改 `app/agents/page.tsx` — Agent 列表从 API | ☐ | 20min | |
+| 5.6 | 修改 `components/trade-panel.tsx` — 接入 buy API + wallet | ☐ | 1h | 最复杂改件 |
+| 5.7 | 接入 resolve API — 市场到期时触发 | ☐ | 30min | |
+| 5.8 | 接入 settle API — 结算按钮 | ☐ | 20min | |
+| 5.9 | 验证: 全部页面可访问 + 交互正常 + typecheck + build | ☐ | 30min | |
+
+## 验证清单
+
+- [ ] `pnpm typecheck` 通过
+- [ ] `pnpm build` 通过
+- [ ] 首页展示市场列表（从 API 而非 mock）
+- [ ] /markets 展示全部 8 个市场
+- [ ] /markets/btc-150k-2026 显示市场详情
+- [ ] TradePanel 点击 Buy → 返回 Position
+- [ ] TradePanel 未连接钱包时提示连接
+- [ ] /agents 显示 6 个 Agent
+- [ ] resolve API 返回 consensus
+- [ ] settle 按钮触发成功
+- [ ] 页面视觉效果与之前完全一致
