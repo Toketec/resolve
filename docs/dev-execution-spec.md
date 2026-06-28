@@ -102,7 +102,7 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 
 | ID | 任务 | 优先级 | 预估工时 | 依赖 | 验收标准 |
 |:--:|------|:------:|:--------:|:----:|---------|
-| C-01 | API路由骨架 | P0 | 4h | — | `/api/markets/:slug/resolve`, `/api/buy`, `/api/settle`, `/api/price/:symbol` 路由定义好，返回mock |
+|| C-01 | API路由骨架 | P0 | 4h | — | `/api/markets`(/agents/price/buy/resolve/settle) 路由定义好。市场/Agent 从 Supabase 读取（真实数据），价格/深度/K线从 HTX 公开 API 读取（真实数据），buy 写入 Supabase positions（数据真链上签名 mock），resolve/settle 返回 mock（等 spec 3/4 替换） |
 || C-02 | Supabase数据层搭建 + Schema部署 | P0 | 3h | — | 在 Supabase SQL Editor 执行迁移，`markets/positions/agent_consensus/agent_votes` 四表创建完成，英雄市场种子数据插入 |
 | C-03 | HTX行情数据只读API | P1 | 2h | — | 通过HTX公开API获取BTC/USDT价格 |
 | C-04 | Walking Skeleton集成 | P0 | 4h | C-01, A-09(mock), B-06(mock) | 全部mock但真实API接口连通→UI端到端 |
