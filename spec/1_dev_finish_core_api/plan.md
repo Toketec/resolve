@@ -10,7 +10,7 @@
 先在终端验证 Supabase 连接：
 
 ```bash
-cd /home/wst1/王圣滔/C主要项目/resolve
+# 在项目根目录执行（确保 pnpm-workspace.yaml 可见）
 # 确认 .env.local 中 SUPABASE_URL 和 SUPABASE_ANON_KEY 已配置
 pnpm --filter @resolve/db exec tsx -e "
 import { createClient } from '@supabase/supabase-js';

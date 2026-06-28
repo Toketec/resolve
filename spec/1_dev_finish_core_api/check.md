@@ -30,7 +30,7 @@ status: pending
 
 ```bash
 # === Step 1: 类型检查（~15秒）===
-cd /home/wst1/王圣滔/C主要项目/resolve
+# 在项目根目录执行
 pnpm typecheck
 
 # === Step 2: 构建验证（~30秒）===
