@@ -9,9 +9,9 @@
   TronLink 连接             真实 Claude 推理               Next.js 页面（已存在）
   单边买入（签名）          精选证据装置                   API 路由 + 最小数据库
   结算合约                  共识数学                       替换 lib/mock
-  测试网赔付 + 气囊          确定性护栏                     HTX 行情数据（只读）
-  8004 身份 + x402          → 然后负责路演                 买入 UI + 现场 demo 镜头
-                                                          集成 + 部署
+  测试网赔付 + 气囊          确定性护栏                      HTX 行情数据（只读）
+  $HTX Fee Pool UI 展示    → 然后负责路演                 买入 UI + 现场 demo 镜头
+  8004 身份 + x402                                         集成 + 部署
 ```
 
 ## Dev A — 链 / 钱（「钱」）
@@ -22,18 +22,19 @@
 - **买入路径（仅链上部分）**——单边买入的签名 / 转账。*UI 与 API 路由*归 Dev C；A 只实现签名或转移价值的那几行。
 - **结算合约**——预注资，在共识达成时向赢家钱包支付固定金额。**先做这个**——它是英雄镜头的高潮，走通骨架需要它来换成真的。
 - **测试网赔付 + 安全气囊**——TRON 测试网真实 TRC-20 转账；一键模拟确认兜底。
+- **$HTX Fee Pool UI 展示**——在 demo 中展示 $HTX 代币费用池界面（买入/结算时的费用流向可视化），配合 HTX 生态叙事。
 - **8004 身份 + x402 支付**——A 负责链上管道（`@bankofai/agent-wallet`、`@bankofai/x402`）。Dev B *指定*（哪些智能体 ID、支付在何处触发）；A *实现*。
 
 得分：HTX 生态契合度（15）、产品完整度（25）。
-排序：**结算合约 → 8004/x402 → 买入签名。** 安全气囊从一开始就在位。
+排序：**结算合约 → $HTX Fee Pool UI → 8004/x402 → 买入签名。** 安全气囊从一开始就在位。
 
 ## Dev B — AI 预言机（「亮点」）+ 路演
 
 负责**英雄镜头的正确性**——RESOLVE 整个卖点所在的创新部分。接触面窄、风险最高 → 早期稳定，然后转向路演。
 
-- **真实智能体解析**——替换 [lib/mock/markets.ts](../lib/mock/markets.ts) 中硬编码的 `buildConsensus()`（当前返回固定的 `0.62` / `0.92`）。输入市场问题 + 标准 → 真实 Claude 调用 → 每个智能体返回 `{ outcome, confidence, evidence }`。
+- **真实智能体解析**——替换 `packages/shared/src/index.ts` 中硬编码的构建共识实现（当前返回固定的 `0.62` / `0.92`）。输入市场问题 + 标准 → 真实 Claude 调用 → 每个智能体返回 `{ outcome, confidence, evidence }`。
 - **精选证据装置**——针对英雄市场的、受控的预取证据集。不做实时抓取（脆弱，会毁掉镜头）。
-- **共识数学**——聚合函数，按 [lib/types.ts](../lib/types.ts) 中的 `AgentVote` / `AIConsensus` 定型。
+- **共识数学**——聚合函数，按 `packages/shared/src/index.ts` 中的 `AgentVote` / `AIConsensus` 定型。
 - **确定性护栏**——镜头每次都得成功；英雄市场被精心编写并排练，使共识在约 30 秒内可靠越过阈值。
 - **然后是路演**——推理冻结后，B 负责**30 个非代码分**：幻灯片、45 秒 demo 脚本、商业 + HTX 生态叙事，以及预演评委 Q&A。B 对英雄镜头理解最深，所以由 B 来解释它为何是真的。
 
@@ -45,9 +46,9 @@
 
 - **最小数据层**——只做 demo 现场写入的部分：那一笔仓位（A 的交易）和那一个共识结果（B）。市场预置。完整的 Postgres + Prisma CRUD 层对本次 demo 是范围蔓延。
 - **API 路由**——A 和 B 接入的接口（见 [api-contracts.zh.md](./api-contracts.zh.md)）。第一天就定义好。
-- **HTX 行情数据**——只读 HTTP，喂给交易所智能体。这是数据层工作，不是钱包工作 → 归 C，不归 A。
-- **买入 UI + API**——[trade-panel.tsx](../components/trade-panel.tsx) 流程及其路由；A 只提供签名调用。
-- **现场 demo 镜头**——C 来驱动：分阶段投票浮现、按需到期触发、连贯流程。（见 [open-questions.zh.md](./open-questions.zh.md) 的 G4、G5。）
+- **HTX 行情数据**（只读 HTTP）——喂给交易所智能体。这是数据层工作，不是钱包工作 → 归 C，不归 A。
+- **买入 UI + API**——`apps/web/components/trade-panel.tsx` 流程及其路由；A 只提供签名调用。
+- **现场 demo 镜头**——C 来驱动：分阶段投票浮现、按需到期触发、连贯流程。
 - **集成 + 部署**——走通骨架、接缝、Vercel（已上线）。
 
 得分：产品完整度（25）、演示表现（10）。
@@ -61,12 +62,21 @@
 ## 让切片保持并行的接口（第一天敲定）
 
 1. **解析**（C ↔ B）：`resolve(market) → AIConsensus`。B 填实现，C 调用。
-2. **交易 / 结算**（C ↔ A）：`buyShares(...)` + `settle(market, outcome)`。C 暴
-露 API，A 实现链上部分。
+2. **交易 / 结算**（C ↔ A）：`buyShares(...)` + `settle(market, outcome)`。C 暴露 API，A 实现链上部分。
 3. **价格数据**（C → B）：C 提供 HTX 价格 → B 的交易所智能体消费。
 
-[lib/types.ts](../lib/types.ts) 是共享事实。改类型不通知另外两人，禁止。完整签名见 [api-contracts.zh.md](./api-contracts.zh.md)。
+`packages/shared/src/index.ts` 是共享事实。改类型不通知另外两人，禁止。完整签名见 [api-contracts.zh.md](./api-contracts.zh.md)。
 
 ## 时间不够时的优先级
 
 C 的最小数据层 + API → A 的钱包 + 测试网买入 + 赔付 → B 的真实共识（Claude 直连；8004/x402 是加分项，不是底线）。**永远 demo 优先于完整度。**
+
+---
+
+### 脚注
+
+[1] 本文是 `docs/ENG/workload-split.md` 的中文同步版。路径引用已更新为 monorepo 结构下的新位置（`packages/shared/`、`apps/web/`）。
+
+[2] 走通骨架（Walking Skeleton）——端到端的最小可运行系统，所有组件用桩/模拟实现，但通过真实接口契约连接。详见架构文档。
+
+[3] 得分映射：每项任务对应的评分维度权重，源自比赛评分标准（技术创新性 25、产品完成度 25、商业与生态潜力 20、AI 与 Web3 融合度 20、展示表达 10）。

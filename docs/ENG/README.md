@@ -1,36 +1,69 @@
-# RESOLVE — Project Management Docs
+# RESOLVE — Documentation Index
 
-Single source of truth for the HTX Genesis Hackathon build. Built from the locked planning session (grill Q1–Q12). If it's not written here, it isn't decided.
+> **AI-native prediction markets for the HTX Genesis Hackathon.**
+> 6-Agent pool (3 ACTIVE real Claude reasoning + 3 STANDBY display) with Hybrid Web2 DB + TRON chain settlement.
+> Team: Dev A (Chain/Money), Dev B (AI Oracle + Pitch), Dev C (App/Data/Seam).
 
-> 中文版见 [`README.zh.md`](./README.zh.md)。每篇英文文档都有对应的 `.zh.md` 中文版。
+---
 
-## Index
+## Document Index
 
-| Doc | What it covers |
-|-----|----------------|
-| [product-spec.md](./product-spec.md) | The locked product: goal, the one hero shot, scope (must / fake / drop), timeline. |
-| [workload-split.md](./workload-split.md) | The 3-dev split (A / B / C) after all 12 locks, with sequencing. |
-| [api-contracts.md](./api-contracts.md) | The day-1 interfaces A, B, C build against so slices stay parallel. |
-| [open-questions.md](./open-questions.md) | The 8 unresolved mechanics (G1–G8) surfaced from the code. **Read before coding.** |
-|
-| ## New (2026-06-27 Battle Planning) |
-|
-| Doc | What it covers |
-|-----|----------------|
-| [hackathon-battle-plan.md](../hackathon-battle-plan.md) | **Battle Plan** — full competition landscape, track strategy, 9-day countdown, scoring strategy, risk buffer, per-stage deliverables |
-| [dev-execution-spec.md](../dev-execution-spec.md) | **Dev Execution Spec** — 35+ tasks sliced by A/B/C with acceptance criteria, dependencies, integration timeline, code conventions |
+| Doc | Description |
+|-----|-------------|
+| [architecture-overview.md](./architecture-overview.md) | Full system architecture — Vercel Serverless deployment, 3-tier design, ADRs, component breakdown, cost analysis |
+| [dev-execution-spec.md](./dev-execution-spec.md) | 35+ tasks sliced by A/B/C with acceptance criteria, dependencies, integration timeline, code conventions |
+| [judge-qa.md](./judge-qa.md) | Judge Q&A preparation — technical deep dives on HTX ecosystem, AI system design, Hybrid data architecture, $HTX economy, expected questions |
+| [workload-split.md](./workload-split.md) | The 3-dev split (A / B / C) — vertical slices with sequencing priorities and contract boundaries |
+| [api-contracts.md](./api-contracts.md) | Day-1 interfaces — Resolution, Trade & Settle, Price Feed, B.AI integration, and Hybrid Data Layer |
+| [competition-strategy.md](./competition-strategy.md) | Competition landscape — advancement pipeline, scoring strategy, track positioning, risk mitigation, stage deliverables |
 
-## The one-paragraph summary
+### Root-level documents
 
-RESOLVE is an AI-native prediction market for the HTX Genesis Hackathon. The goal is **to win** — real where it scores, faked where it doesn't. The whole demo is built around **one hero shot**: connect TronLink → make one live testnet buy → market expires → AI agents reason over curated evidence → consensus crosses threshold → real on-chain testnet payout. Three devs own three vertical slices (chain / AI / app), and Dev C owns the seam where they meet.
+| Doc | Description |
+|-----|-------------|
+| [check.md](../check.md) | Acceptance checklist — pre-submission verification for the hero market end-to-end flow |
 
-## The only hard deadline
+> 中文版见 [../CHI/README.zh.md](../CHI/README.zh.md)。
 
-**Submission: July 5, 2026.** Nothing is required before that date. Everything else (walking skeleton, freeze, backup video) is engineering discipline, not an external gate. See [product-spec.md](./product-spec.md#timeline).
+---
 
-## How to use these docs
+## Quick Start for Contributors
 
-1. All three devs read [product-spec.md](./product-spec.md) and [open-questions.md](./open-questions.md) first.
-2. Agree the [api-contracts.md](./api-contracts.md) interfaces on day 1 — before anyone writes real logic.
-3. Resolve the two blocking gaps (G6 agent count, G8 hero market) — they size Dev B.
-4. Build to the contracts; swap mock → real behind them.
+1. **Understand the architecture** — start with [architecture-overview.md](./architecture-overview.md) for the big picture.
+2. **Know the interfaces** — read [api-contracts.md](./api-contracts.md) for the contracts between slices. These are locked.
+3. **Find your slice** — [workload-split.md](./workload-split.md) tells you exactly what you own.
+4. **Execute** — [dev-execution-spec.md](./dev-execution-spec.md) lists every task with acceptance criteria.
+5. **Prepare the pitch** — [judge-qa.md](./judge-qa.md) covers the judge narrative; [competition-strategy.md](./competition-strategy.md) covers the competition game plan.
+
+### Key Commands
+
+```bash
+pnpm install            # Install all dependencies
+pnpm dev                # Run dev server (from project root)
+pnpm typecheck          # Type-check all packages
+pnpm build              # Build for production
+```
+
+### Project Structure
+
+```
+resolve/
+├── AGENTS.md, CLAUDE.md, docs/
+├── apps/
+│   ├── web/           # Next.js 16 app (UI + API Routes)
+│   └── contracts/     # Solidity contracts
+├── packages/
+│   ├── shared/        # Types + type definitions
+│   ├── ai/            # AI oracle logic (agents, consensus)
+│   └── db/            # Supabase client + data layer
+```
+
+### Hero Market (Quick Demo)
+
+**"Will Bitcoin close above $150,000 by Dec 31, 2026?"**
+
+1. Connect TronLink → buy YES on testnet → market expires (admin trigger)
+2. Orchestrator selects 3 agents → parallel Claude inference → weighted consensus
+3. Payout to winner's wallet on TRON testnet
+
+Total demo time: ~45 seconds.
