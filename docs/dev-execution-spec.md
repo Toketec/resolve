@@ -74,27 +74,41 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | B-04 | 精选证据装置(英雄市场) | P0 | 4h | B-01 | 预取证据集HTX价格/新闻/链上数据, 喂给对应Agent |
 | B-05 | 共识数学 + 确定性护栏 | P0 | 3h | B-03 | 加权投票→加权共识。英雄市场预演确保≥0.65阈值 |
 | B-06 | resolve()真实实现→替换mock | P0 | 2h | B-05 | `packages/ai/src/index.ts` 中 `resolveMarket` 真实调用 |
-| B-07 | HTX交易所Agent证据源 | P1 | 3h | B-01, C-03 | 消费HTX价格数据作为推理证据的一部分 |
-| B-08 | Pitch Deck初稿(10-12页) | P1 | 6h | — | 问题→方案→技术→商业→团队→路线图 |
-| B-09 | Demo脚本(45s) | P1 | 2h | B-05 | 分秒级的演示话术和屏幕操作引导 |
-| B-10 | 路演排练 | P1 | 4h | B-08, B-09 | 流畅讲述+回答问题准备 |
-| B-11 | 社区投票文案 | P2 | 1h | — | 推特/社区一条可转发的内容 |
+|| B-07 | HTX交易所Agent证据源 | P1 | 3h | B-01, C-03 | 消费HTX价格数据作为推理证据的一部分 |
+|| B-08 | Pitch Deck初稿(10-12页) | P1 | 6h | — | 问题→方案→技术→商业→团队→路线图 |
+|| B-09 | Demo脚本(45s) | P1 | 2h | B-05 | 分秒级的演示话术和屏幕操作引导 |
+|| B-10 | 路演排练 | P1 | 4h | B-08, B-09 | 流畅讲述+回答问题准备 |
+|| B-11 | 社区投票文案 | P2 | 1h | — | 推特/社区一条可转发的内容 |
+|| **B-12** | 🆕 **Prompt工程 — 3个ACTIVE Agent精准设计** | **P0** | **4h** | B-01 | 编写BULL-1/BEAR-1/NEUT-1三份角色prompt，每份含：角色人设、推理规则、证据集成方式、输出JSON schema、确定性护栏。hero market预演≥3次确保95%一致性 |
+|| **B-13** | 🆕 **Orchestrator — 6选3智能调度Agent** | **P0** | **3h** | B-02 | 在resolve流程最前面增加一层LLM调用。给定市场问题+6个Agent能力描述，选最优3个ACTIVE+给出选择理由。selectAgent()返回 {selected:["bull-1","bear-1","neut-1"], reasoning:"..."} |
+|| **B-14** | 🆕 **B.AI LLM服务集成（视API兼容性）** | **P1** | **2h** | B-02, 用户提供B.AI Key | 将至少1个Agent（建议NEUT-1）的推理路由到B.AI提供的LLM服务。`.env`配`BAI_API_KEY`+`BAI_API_ENDPOINT`。兼容OpenAI格式则一行代码切换 |
 
-**B 的依赖风险**: Claude API key + rate limit → 提前测试调用频率。
-**B 的关键决策**: 先定 G6(3个Agent) 和 G8(英雄市场问题)，不决定就不开工。
+**B 的依赖风险**: Claude API key + rate limit → 提前测试调用频率。B.AI API兼容性待用户注册后确认。
+**B 的关键决策**: 先定 G6(3个Agent) 和 G8(英雄市场问题)，不决定就不开工。**新增B-13(Orchestrator)改变resolve流程为: selectAgent() → parallel inference → consensus。**
 
-**Agents角色设计建议**:
+**Agents角色设计建议**（更新：新增 Orchestrator 调度层）:
 
-| Agent | 角色 | 证据源 | Prompt风格 |
-|-------|------|--------|-----------|
-| **BULL-1** (交易所预言机) | ⚡ ACTIVE | 看多分析 | HTX BTC价格、交易量趋势 | 技术分析偏多 |
-| **BEAR-1** (媒体预言机) | ⚡ ACTIVE | 看空/谨慎 | 新闻情绪、监管动态 | 基本面偏保守 |
-| **NEUT-1** (链上预言机) | ⚡ ACTIVE | 中性判断 | 链上数据、持仓分布 | 数据驱动中性 |
-| **BULL-2** (技术预言机) | 💤 STANDBY | 备用看多 | — | — |
-| **BEAR-2** (监管预言机) | 💤 STANDBY | 备用看空 | — | — |
-| **NEUT-2** (宏观预言机) | 💤 STANDBY | 备选中性 | — | — |
+| Agent | ID | Tier | 角色 | 证据源 | Prompt风格 |
+|-------|-----|:----:|------|--------|-----------|
+| **Orchestrator** | agent-selector | ⚡ **调度层** | 总调度 | 市场问题+6个Agent档案 | 分析市场→选最优3个 |
+| **BULL-1** (交易所预言机) | bull-1 | ⚡ ACTIVE | 看多分析 | HTX BTC价格、交易量趋势 | 技术分析偏多 |
+| **BEAR-1** (媒体预言机) | bear-1 | ⚡ ACTIVE | 看空/谨慎 | 新闻情绪、监管动态 | 基本面偏保守 |
+| **NEUT-1** (链上预言机) | neut-1 | ⚡ ACTIVE | 中性判断 | 链上数据、持仓分布 | 数据驱动中性 |
+| **BULL-2** (技术预言机) | bull-2 | 💤 STANDBY | 备用看多 | — | — |
+| **BEAR-2** (监管预言机) | bear-2 | 💤 STANDBY | 备用看空 | — | — |
+| **NEUT-2** (宏观预言机) | neut-2 | 💤 STANDBY | 备选中性 | — | — |
 
-**设计说明**: UI 展示 6 个 Agent 的 Pool，其中 3 个标记 ACTIVE（真实 Claude 推理），3 个标记 STANDBY（仅为展示 Agent Pool 规模）。详见 battle-plan §8。
+**resolve 流程（更新）**:
+```
+Market expires (triggered)
+  → orchestrator.selectAgent(market, all_agents)  ← 新增！多一层LLM调用
+    → 返回 {selected: ["bull-1","bear-1","neut-1"], reasoning: "..."}
+  → parallel inference on selected 3 agents
+  → weighted consensus
+  → UI shows Agent Selection reason → votes 1-by-1
+```
+
+**设计说明**: UI 展示 6 个 Agent 的 Pool + 1 个 Orchestrator 调度器。Orchestrator 先展示"正在选择最优 Agent 组合…"动画，然后 3 个被选中的 Agent 依次推理。未选中的显示"Standby for this market"。
 
 ---
 
@@ -121,9 +135,9 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | C-17 | 🆕 AGENTS.md/CLAUDE.md更新 | P2 | 1h | — | 反映最终架构和dev命令 |
 | C-18 | 🆕 B.AI 8004身份展示页 | P1 | 2h | A-07 | 在UI中展示Agent的8004 ID及链上证明链接 |
 || C-19 | 🆕 B.AI x402触发演示 | P1 | 2h | A-08 | 在consensus达成后触发x402支付并展示交易哈希 |
-|| **C-20** | 🆕 **\$HTX Fee Pool + Agent Rewards UI** | **P1** | **2h** | C-11 | TradePanel显示"0.1% fee → \$HTX Buyback"计数器；结算后显示累计\$HTX回购量和Agent激励；Agent卡片显示\$HTX Earned标签。纯UI不可否认账，展示\$HTX经济叙事 | 
-|| **C-21** | 🆕 **HTX 订单簿深度 + K线数据** | **P1** | **1.5h** | C-03 | 新增`/api/price/:symbol/depth`(订单簿)和`/api/price/:symbol/kline`(K线)路由；前端市场详情页展示订单簿深度和价格走势图；BULL-1 Agent证据中加入订单簿数据 |
-|| **C-22** | 🆕 **B.AI 算力注册 + 展示徽章** | **P1** | **1h** | — | 申请B.AI算力额度(\$300-500)；Agent卡片显示"Powered by B.AI"徽章；提交材料注明使用了B.AI算力资源 |
+||| **C-20** | 🆕 **\$HTX 经济模型全展示（盈利模型代码化）** | **P1** | **4h** | C-11 | ① TradePanel显示"0.1% fee → \$HTX Buyback"实时计数器 ② 结算后Agent卡片显示\$HTX Earned金额 ③ Agent详情页显示\$HTX质押量（静态数据）和累计收益 ④ 市场详情页顶部显示"Market Stake: X \$HTX"——纯前端不可否认账，展示完整\$HTX经济循环叙事 |
+||| **C-21** | 🆕 **HTX 订单簿深度 + K线数据** | **P1** | **1.5h** | C-03 | 新增`/api/price/:symbol/depth`(订单簿)和`/api/price/:symbol/kline`(K线)路由；前端市场详情页展示订单簿深度和价格走势图；BULL-1 Agent证据中加入订单簿数据 |
+||| **C-22** | 🆕 **B.AI 算力注册 + LLM集成 + 展示徽章** | **P1** | **2h** | — | ① 申请B.AI算力额度(\$300-500) ② `.env`配`BAI_API_KEY`+`BAI_API_ENDPOINT` ③ 至少1个Agent推理路由至B.AI（兼容OpenAI格式则一行代码） ④ Agent卡片显示"Powered by B.AI"徽章 ⑤ 提交材料注明使用了B.AI算力资源 |
 
 **C 的关键路径**: C-01(C-03) → C-04 → C-05/C-06/C-07 → C-08/C-09 → C-13 → C-18/C-19 → **C-20/C-21**
 **C 的风险**: 如果A或B延迟，C可以通过mock确保前端不阻塞。C从第一天起就可以用mock工作。
@@ -206,7 +220,12 @@ pnpm build        # 必须通过才能合并到main
 - [ ] 结算按钮 → TRON测试网转账成功
 - [ ] 钱包收到赔付
 - [ ] 全过程 45 秒内完成（包括等待AI推理的间隔）
+- [ ] 🆕 **Orchestrator**: resolve开始前端显示"正在选择最优Agent组合…"动画
+- [ ] 🆕 **Orchestrator**: 返回后显示选择理由"Selected BULL-1/BEAR-1/NEUT-1 for BTC market"
 - [ ] 🆕 **\$HTX 展示**: TradePanel底部显示"0.1% fee → \$HTX Buyback"计数器
+- [ ] 🆕 **\$HTX 展示**: 结算后Agent卡片显示\$HTX Earned金额
+- [ ] 🆕 **\$HTX 展示**: Agent详情页显示\$HTX质押量和累计收益
+- [ ] 🆕 **HTX 深度数据**: 市场详情页显示订单簿深度图
 - [ ] 🆕 **\$HTX 展示**: 结算后Agent卡片显示\$HTX Earned金额
 - [ ] 🆕 **HTX 深度数据**: 市场详情页显示订单簿深度图
 - [ ] 🆕 **HTX K线**: 市场详情页显示HTX BTC真实K线走势

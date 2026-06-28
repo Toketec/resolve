@@ -74,12 +74,21 @@ resolve/
 
 **Will Bitcoin close above $150,000 by Dec 31, 2026?**
 
-**Agent Pool**: 6 agents (3 ACTIVE + 3 STANDBY)
+**Orchestrator + 6-Agent Pool**: Orchestrator 先选最优3个 → 并行推理 → 共识
 
 | Tier | Agents | What they do |
 |:----|--------|-------------|
-| ⚡ **ACTIVE** (real Claude) | BULL-1(Exchange) / BEAR-1(Media) / NEUT-1(Onchain) | 3 parallel Claude calls → independent votes → weighted consensus |
-| 💤 **STANDBY** (UI display) | BULL-2(Tech) / BEAR-2(Regulation) / NEUT-2(Macro) | Shown in Agent Pool with STANDBY badge, no real inference |
+| ⚡ **Orchestrator** (selector) | agent-selector | 1 LLM call: analyze market → pick best 3 agents + reasoning |
+| ⚡ **ACTIVE** (selected by orchestrator) | BULL-1(Exchange) / BEAR-1(Media) / NEUT-1(Onchain) | 3 parallel LLM calls with role prompts → independent votes |
+| 💤 **STANDBY** (not selected for this market) | BULL-2(Tech) / BEAR-2(Regulation) / NEUT-2(Macro) | Shown in Agent Pool with STANDBY + "Not selected for this market" badge |
+
+**Full resolve flow**:
+```
+  → orchestrator.selectAgents()        (1 LLM call, ~2s)
+  → parallel inference on selected 3    (3 LLM calls in parallel, ~5s)
+  → weighted consensus
+  → UI: selection reasoning → votes 1-by-1
+```
 
 - Consensus threshold: 0.65
 - All original project history preserved under apps/web/
