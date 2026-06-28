@@ -16,6 +16,9 @@
 | 4 | 合约 + 链上逻辑 | ✓ 跑类型检查 | ✓ 链上验证 | spec 4 |
 | 5 | Walking Skeleton 集成 | ✓ 跑类型检查 | ✓ 浏览器全流程 | spec 5 |
 | 6 | Demo 打磨 (UX/动画) | ✓ 跑类型检查 | ✓ 浏览器 Demo 模拟 | spec 6 |
+| **E1** | 🆕 **\$HTX 经济展示** | ✓ 跑类型检查 | ✓ 检查 Buyback + Agent 激励 UI | C-20 |
+| **E2** | 🆕 **更多 HTX API** | ✓ 跑类型检查 | ✓ 检查订单簿+ K 线图表 | C-21 |
+| **E3** | 🆕 **B.AI 算力徽章** | ✓ 跑类型检查 | ✓ 检查 "Powered by B.AI" | C-22 |
 
 ---
 
@@ -153,6 +156,11 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 | 6.10 | 正常网络下买入 | 按钮显示 "Processing..." + 禁用状态，完成后恢复 |
 | 6.11 | 🆕 检查 Agent 8004 卡片 | 页面某处显示 8004 ID + 点击跳转 Tronscan |
 | 6.12 | 🆕 Consensus 达成后检查 x402 区域 | 显示交易哈希 + 链上跳转链接 |
+| **6.13** | 🆕 **TradePanel \$HTX 计数器** | 底部显示 "0.1% fee → \$HTX Buyback" + 累计数量 |
+| **6.14** | 🆕 **Agent \$HTX 激励** | 结算后Agent卡片显示 "0.0X \$HTX earned" |
+| **6.15** | 🆕 **HTX 订单簿深度** | 市场详情页可看到买单/卖单深度图 |
+| **6.16** | 🆕 **HTX K线走势** | 市场详情页显示HTX真实BTC K线 |
+| **6.17** | 🆕 **B.AI 算力徽章** | Agent卡片可见 "Powered by B.AI" 徽章 |
 
 **验收通过条件**: 6.1–6.8 通过。6.9–6.10（容错性）推荐通过。6.11–6.12（加分项）可选。
 
@@ -173,7 +181,10 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 | H7 | 结算 | 点击 Settle | txHash 显示 | 5s |
 | H8 | 检查赔付 | 钱包余额变化 | USDD 余额增加 | — |
 | H9 | 🆕 B.AI 展示 | Agent 8004 ID 可见 | 跳转 Tronscan | — |
-| H10 | 🆕 x402 展示 | x402 txHash 可见 | 跳转链上 | — |
+| H10 | 🆕 x402 txHash 可见 | 跳转链上 | — |
+| **H11** | 🆕 **\$HTX Buyback** | TradePanel底部显示累计\$HTX回购 | — |
+| **H12** | 🆕 **HTX K线+深度** | 市场详情页图表可见 | — |
+| **H13** | 🆕 **B.AI 算力** | Agent卡片有"Powered by B.AI"徽章 | — |
 
 **总 Demo 时长**: ~30 秒（包括等待 AI 推理的 4.5s 间隙）
 
@@ -186,8 +197,12 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 - [ ] Pitch Deck 10+ 页（问题→方案→技术→商业→团队→路线图）
 - [ ] 公网可访问（Vercel 部署 `resolve-prediction.vercel.app`）
 - [ ] 提交表单信息完整
+- [ ] **生态资源使用说明 — 在提交材料中专门写明使用了 HTX API、\$HTX 经济模型、B.AI 算力** ⚠️ 关键
 - [ ] 至少 3 个评委 Q&A 已准备
 - [ ] Hero Market 端到端完整跑通 ≥ 5 次
+- [ ] 🆕 \$HTX Fee Pool / Buyback 计数器在 UI 正确显示
+- [ ] 🆕 HTX 订单簿+K线图在市场详情页可见
+- [ ] 🆕 Agent 卡片显示 "Powered by B.AI" 徽章
 
 ---
 

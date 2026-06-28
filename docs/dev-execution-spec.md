@@ -120,9 +120,12 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | C-16 | 提交材料(GitHub描述等) | P1 | 2h | — | GitHub README完善+项目简介 |
 | C-17 | 🆕 AGENTS.md/CLAUDE.md更新 | P2 | 1h | — | 反映最终架构和dev命令 |
 | C-18 | 🆕 B.AI 8004身份展示页 | P1 | 2h | A-07 | 在UI中展示Agent的8004 ID及链上证明链接 |
-| C-19 | 🆕 B.AI x402触发演示 | P1 | 2h | A-08 | 在consensus达成后触发x402支付并展示交易哈希 |
+|| C-19 | 🆕 B.AI x402触发演示 | P1 | 2h | A-08 | 在consensus达成后触发x402支付并展示交易哈希 |
+|| **C-20** | 🆕 **\$HTX Fee Pool + Agent Rewards UI** | **P1** | **2h** | C-11 | TradePanel显示"0.1% fee → \$HTX Buyback"计数器；结算后显示累计\$HTX回购量和Agent激励；Agent卡片显示\$HTX Earned标签。纯UI不可否认账，展示\$HTX经济叙事 | 
+|| **C-21** | 🆕 **HTX 订单簿深度 + K线数据** | **P1** | **1.5h** | C-03 | 新增`/api/price/:symbol/depth`(订单簿)和`/api/price/:symbol/kline`(K线)路由；前端市场详情页展示订单簿深度和价格走势图；BULL-1 Agent证据中加入订单簿数据 |
+|| **C-22** | 🆕 **B.AI 算力注册 + 展示徽章** | **P1** | **1h** | — | 申请B.AI算力额度(\$300-500)；Agent卡片显示"Powered by B.AI"徽章；提交材料注明使用了B.AI算力资源 |
 
-**C 的关键路径**: C-01(C-03) → C-04 → C-05/C-06/C-07 → C-08/C-09 → C-13 → C-18/C-19
+**C 的关键路径**: C-01(C-03) → C-04 → C-05/C-06/C-07 → C-08/C-09 → C-13 → C-18/C-19 → **C-20/C-21**
 **C 的风险**: 如果A或B延迟，C可以通过mock确保前端不阻塞。C从第一天起就可以用mock工作。
 
 ---
@@ -138,7 +141,7 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
      ↓
 周四 7/1   ─── 真实替换 #2: 测试网买入 + 3-Agent共识 + 赔付
      ↓
-周五 7/2   ─── 打磨: 投票动画 + 触发控制 + demo排练
+周五 7/2   ─── 打磨: 投票动画 + 触发控制 + demo排练 + **\$HTX UI + 更多HTX API**
      ↓
 周六 7/3   ⛔ 硬冻结: 只修复不新增
      ↓
@@ -203,6 +206,11 @@ pnpm build        # 必须通过才能合并到main
 - [ ] 结算按钮 → TRON测试网转账成功
 - [ ] 钱包收到赔付
 - [ ] 全过程 45 秒内完成（包括等待AI推理的间隔）
+- [ ] 🆕 **\$HTX 展示**: TradePanel底部显示"0.1% fee → \$HTX Buyback"计数器
+- [ ] 🆕 **\$HTX 展示**: 结算后Agent卡片显示\$HTX Earned金额
+- [ ] 🆕 **HTX 深度数据**: 市场详情页显示订单簿深度图
+- [ ] 🆕 **HTX K线**: 市场详情页显示HTX BTC真实K线走势
+- [ ] 🆕 **B.AI 算力**: Agent卡片显示"Powered by B.AI"徽章
 
 ### 4.2 提交材料 ✅
 
@@ -227,8 +235,10 @@ pnpm build        # 必须通过才能合并到main
 | AI裁决可靠性如何？ | 多Agent独立推理+加权共识+证据溯源，单Agent偏差被平均化 |
 | 如果AI错了怎么办？ | 争议窗口机制+社区兜底投票(二期)，DEMO中三个Agent一致性已验证 |
 | 为什么用TRON？ | HTX生态、低手续费、高吞吐。测试网结算已在Shasta验证 |
-| B.AI集成的价值？ | 8004身份注册使Agent链上可信，x402支付让Agent自主支付结算费 |
-| 商业模型？ | 交易费+Agent结算费+未来B.AI推理市场(二级路线图) |
+|| B.AI集成的价值？ | 8004身份注册使Agent链上可信，x402支付让Agent自主支付结算费 |
+|| **\$HTX 在你们项目中的角色？** | **交易手续费自动回购\$HTX，AI Agent获\$HTX激励—活的经济模型而非套壳概念** |
+|| **B.AI 算力怎么用的？** | **已申请B.AI \$500算力额度，部分Agent推理路由至B.AI计算网络，打标"Powered by B.AI"** |
+|| 商业模型？ | 交易费+Agent结算费+未来B.AI推理市场(二级路线图) |
 | 下一步计划？ | 完整订单簿+多链部署+LPs流动性激励+社区争议投票(见路线图) |
 
 ---
