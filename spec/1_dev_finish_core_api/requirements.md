@@ -50,10 +50,10 @@
 
 ## 边界与约束
 
-- 市场/Agent 数据源：**Supabase PostgreSQL**（真实数据）
-- 价格/深度/K线数据源：**HTX 公开 API**（真实数据，零注册）
+- API 路由数据源：**Supabase PostgreSQL**（市场/Agent 元数据）+ **HTX 公开 API**（行情数据）
+- **持仓记录**：写入 Supabase positions 表（Web2 数据库读快），tx_hash 存链上交易哈希供验证
+- **资产结算**：仅链上执行（TRON Shasta），永不在 Supabase 中变更余额
+- Hybrid 数据架构核心原则：高频查询走 DB（5ms），不可篡改走链（信任锚）
 - buy 的 `tx_hash` 字段在 spec 4 之前 mock 填充（数据已存 Supabase）
 - resolve/settle 在 spec 3/4 之前返回 mock
-- `packages/db/src/data.ts` 中的 CRUD 函数直接用于 API 路由（不经过中间 store）
 - 所有 API 返回形状与 `@resolve/shared` 类型一致
-- HTX API 代理：`/api/price/:symbol` → `api.htx.com/market/detail/merged`

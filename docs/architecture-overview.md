@@ -132,10 +132,17 @@
 | 数据 | 存储方式 | 说明 |
 |------|---------|------|
 || 市场价格 | 内存缓存 | 从HTX API获取，缓存5分钟 |
-|| 用户仓位 | **Supabase (PostgreSQL)** | `positions` 表，记录购入详情 |
-|| 市场数据 | **Supabase (PostgreSQL)** | `markets` 表，包含英雄市场种子数据 |
+|| 用户仓位 | **Supabase (PostgreSQL)** | `positions` 表，记录购入详情。链上 tx_hash 作为可验证证明 |
+|| 市场数据 | **Supabase (PostgreSQL)** | `markets` 表，包含英雄市场种子数据。**元数据存 Web2 数据库**（快速搜索/排序），质押/结算走 TRON 链 |
 || Agent推理结果 | **Supabase (PostgreSQL)** | `agent_consensus` + `agent_votes` 表 |
 || 共识历史 | **Supabase (PostgreSQL)** | 每次 resolve 结果持久化在 `agent_consensus` |
+|| 清算资产 | **TRON Shasta 链** | USDD 转账通过智能合约执行，纯链上不可篡改 |
+|| \$HTX 质押 | **TRON 链** | 创建市场时质押\$HTX（防垃圾），链上合约管理 |
+
+**数据架构决策总结（Hybrid）**:
+- 需要**快速查询/搜索/排序**的数据 → Web2 数据库（Supabase）
+- 需要**不可篡改/信任最小化**的数据 → TRON 链（合约）
+- 两套系统的桥梁：`tx_hash` 字段链接链上交易，`wallet_address` 链接用户链上身份
 
 |**为什么用 Supabase**:
 |- 用户要求：正式产品不应有 mock 数据，后端真实数据 + 前端填充策略
@@ -282,6 +289,26 @@
 4. PostgreSQL 迁移路径清晰：Supabase → 独立PG → RDS
 
 **代价**: 增加少量 latency（Vercel us-east-1 → Supabase us-east-1 通常 < 10ms）
+
+### ADR-005: Hybrid 数据架构 — Web2 DB + TRON 链
+
+**选择**: 市场元数据/持仓/共识历史存 Supabase（Web2 DB），资产结算/质押存 TRON 链
+
+**理由**:
+1. **用户体验**: 市场列表、搜索、过滤、排序需要秒级响应——链上不可能做到
+2. **成本**: TRON 链每笔写入有 gas 费，高频元数据操作上链不现实
+3. **可验证性**: 每笔 buy 记录存 `tx_hash`，用户可随时去 Tronscan 验证；链上是信任锚，DB 是缓存层
+4. **答辩叙事**: "我们取 Web2 的速度 + Web3 的信任，不做为了区块链而区块链的妥协"
+
+**不选择纯链上的理由**:
+- 市场列表查询速度 3-5s（链上查询）vs 5ms（DB）
+- 用户持仓历史过滤/聚合几乎不可能（链上 event 扫描）
+- Supabase 免费 500MB 对 Demo 场景完全够用
+
+**不选择纯 Web2 的理由**:
+- 资产结算如果不在链上，就不叫 Web3 项目
+- 评委的评分维度明确包含「AI/Web3 应用程度」
+- \$HTX 质押/Agent 激励需要在链上产生可信的经济循环
 
 ---
 

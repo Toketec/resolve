@@ -41,6 +41,20 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | **造假/预置** | 其他市场数据、成交量、交易者数、价格发现——静态mock |
 | **砍掉(本次不做)** | 卖出仓位、订单簿、做市逻辑、LP收益、争议投票、跨链、完整代币经济 |
 
+### 0.4 Hybrid 数据架构（关键设计决策）
+
+本项目采用 **Web2 数据库（Supabase）+ TRON 链混合存储**：
+
+| 数据类型 | 存哪 | 原因 |
+|---------|:----:|------|
+| 市场元数据（question/description/category） | Supabase | 搜索/过滤/排序需要秒级响应，链上不可能 |
+| Agent 定义和推理记录 | Supabase | AI 推理日志，不需要上链 |
+| 用户持仓记录 | Supabase + tx_hash | DB 快速查询，tx_hash 可去 Tronscan 验证 |
+| **资产结算（USDD 转账）** | **TRON 链** | 必须链上，信任最小化 |
+| **\$HTX 质押/激励** | **TRON 链** | 经济循环需要链上可信 |
+
+**核心原则**: "取 Web2 的速度 + Web3 的信任" — 需要高频查询的走 DB，需要不可篡改的走链。两套系统通过 `tx_hash` 和 `wallet_address` 关联。
+
 ---
 
 ## 1. 任务全景（按切片）
