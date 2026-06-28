@@ -36,7 +36,7 @@ Polymarket-like prediction markets where AI agents (not humans or centralized or
 
 ## Architecture
 
-See [docs/architecture-overview.md](docs/architecture-overview.md) for full system architecture.
+See [docs/ENG/architecture-overview.md](docs/ENG/architecture-overview.md) (EN) or [docs/CHI/architecture-overview.zh.md](docs/CHI/architecture-overview.zh.md) (中文) for full system architecture. Other design docs are also bilingual under `docs/ENG/` and `docs/CHI/`.
 
 **Key architecture decisions**:
 - Deploy: Vercel Serverless only (free Hobby plan, no ICP filing)
@@ -60,7 +60,10 @@ pnpm typecheck         # Type-check all
 
 ```
 resolve/
-├── AGENTS.md, CLAUDE.md, docs/
+├── docs/                    # Bilingual docs: ENG/ + CHI/ + archive/
+│   ├── ENG/                 # English (7 files)
+│   ├── CHI/                 # 中文文档 (7 files)
+│   └── archive/             # Superseded documents
 ├── apps/
 │   ├── web/           # @resolve/web — Next.js 16
 │   └── contracts/     # @resolve/contracts — Solidity
