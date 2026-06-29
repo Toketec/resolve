@@ -129,7 +129,7 @@ async function settleOnChain(args: {
   marketId: string;
   outcome: Outcome;
   winnerWallet: string;
-  amountUSDD: number;
+  amount: number;              // settlement amount in USDD
 }): Promise<{ txHash: string; status: "confirmed" | "simulated" }>;
 
 // Query staking info (read-only, Trongrid)

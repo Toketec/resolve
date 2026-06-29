@@ -45,7 +45,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 |:-:|----------|----------|-----------|
 | 5.5 | 点击「Connect Wallet」→ TronLink 授权 | 右上角地址 `T...xxx` + 绿点 + "Shasta" | 连接操作路由到 spec 2 的 `tronLink.connect()`，而非硬编码假连接 |
 | 5.6 | 选择 YES → 输入 100 USDD → 点击「Buy YES」 | TronLink 签名弹窗 → 确认后 TradePanel 显示 "Order placed" + 仓位信息 | buy 调用 `POST /api/buy`（先走 mock 响应，再接 spec 4 真实合约签名） |
-| 5.7 | 检查 Network → 找到 POST `/api/buy` 请求 | 请求 body 含 marketId/side/amountUSDT/walletAddress；响应含 id/txHash | seam: buy 请求 → API handler → store 更新 → UI 反馈 |
+| 5.7 | 检查 Network → 找到 POST `/api/buy` 请求 | 请求 body 含 marketId/side/amount/walletAddress；响应含 id/txHash | seam: buy 请求 → API handler → store 更新 → UI 反馈 |
 
 ### Seam 4: Resolve + ConsensusMeter — AI Oracle 集成
 

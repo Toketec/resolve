@@ -137,6 +137,33 @@ Phase                      User Does                  Agent Does                
 | **B.AI 8004 Protocol** (Agent identity) | TRON on-chain registration | Each AI Agent gets a verified 8004 ID on TRON |
 | **B.AI x402 Protocol** (Micropayment) | On-chain payment | Agent pays settlement fee autonomously after resolve() |
 
+### 3.5 USDD + $HTX Ecosystem Strategy (Competition Differentiator)
+
+**Core thesis**: Not just using a stablecoin — choosing **USDD (TRON native decentralized stablecoin)** over generic USDT or USDC is a deliberate ecosystem-alignment decision that scores on multiple judging dimensions.
+
+| Dimension | How USDD + $HTX Scores |
+|-----------|------------------------|
+| 🏆 **Tech Innovation** | USDD deployment on TRON Shasta — real TRC-20 integration, not another EVM fork |
+| 📦 **Product Completeness** | End-to-end flow with USDD settlement + $HTX fee display — visible in demo |
+| 📈 **Commercial Potential** | "Ecosystem-native stablecoin + native token economy" = strong HTX ecosystem synergy |
+| 🔗 **AI/Web3 Integration** | Real TRON-based settlement (not simulated dollar amounts) |
+| 🎤 **Presentation** | Easy pitch line: "We use HTX ecosystem's own stablecoin and token — not some generic stablecoin everyone else uses" |
+
+**Three-layer economic design:**
+
+| Layer | Mechanism | Demo Visibility | Judge Perception |
+|:------|:-----------|:----------------|:-----------------|
+| **① Settlement** | USDD TRC-20 transfer on Shasta testnet | Buy: pay USDD → Win: receive USDD | "Real on-chain value transfer" |
+| **② $HTX Fee Utility** | Buy shares with $HTX fee discount (display only, no real swap) | TradePanel shows "$HTX 0.5% fee, or 0.3% with $HTX staking" | "They understand token economics" |
+| **③ $HTX Buyback Display** | KPI card showing "Total $HTX Buyback: X" from market fee pool | Dashboard KPI → visible in 45s demo | "Economic flywheel, not a static app" |
+
+**Why NOT USDT/USDC:**
+- USDT: Generic, widely used — no ecosystem differentiation
+- USDC: Same issue, plus Circle is not TRON-native
+- **Both score 0 on "HTX ecosystem alignment"** → loss of 商业与生态潜力 points
+
+**Pitch one-liner:** "USDD settles the prediction, $HTX fuels the economy — both native to the ecosystem we're building on."
+
 **Plus**: B.AI compute credits ($300-500) used for NEUT-1 inference, showing "Powered by B.AI."
 
 ### 3.4 Key Tech Decisions
