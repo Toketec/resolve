@@ -52,7 +52,7 @@ pnpm build
 | **1.1** | `curl http://localhost:3000/api/markets \| python3 -m json.tool` | 返回 JSON **数组**，每条记录包含 `id`/`slug`/`title`/`question`/`status`/`expires_at`/`volume`/`yes_price`/`no_price` 等字段。数组中应包含英雄市场 `btc-150k-eoy` |
 | **1.2** | `curl http://localhost:3000/api/markets/btc-150k-eoy \| python3 -m json.tool` | 返回单个 JSON **对象**，`slug="btc-150k-eoy"`，`status` 为 `live` 或 `pending`，含 `expires_at` 日期 |
 | **1.3** | `curl http://localhost:3000/api/markets/btc-150k-eoy/resolve \| python3 -m json.tool` | 返回 mock AIConsensus JSON，含 `status`/`votes`/`consensus` 字段。`votes` 是数组（目前 mock，等 spec 3 替换） |
-| **1.4** | `curl http://localhost:3000/api/agents \| python3 -m json.tool` | 返回 JSON **数组**，长度为 **6**（3 active + 3 standby）。每条含 `id`/`name`/`role`/`tier`/`powered_by`/`description` 字段。`role` 包含 `"active"` 和 `"standby"` |
+| **1.4** | `curl http://localhost:3000/api/agents \| python3 -m json.tool` | 返回 JSON **数组**，长度为 **6**（全部 active）。每条含 `id`/`name`/`role`/`tier`/`powered_by`/`description` 字段。**不再有 `"tier": "standby"` 的 Agent** |
 | **1.5** | `curl -X POST http://localhost:3000/api/buy -H 'Content-Type: application/json' -d '{"marketId":"mk_btc_150k","side":"YES","amount":100,"walletAddress":"TTest123"}' \| python3 -m json.tool` | 返回 Position JSON，含 `id`/`marketId`/`side`/`shares`/`txHash`/`status` 字段。`txHash` 以 `mock_tx_` 开头 |
 | **1.6** | `curl http://localhost:3000/api/price/BTC \| python3 -m json.tool` | 返回 JSON，含 `symbol` (="BTC")/`price`(数字)/`change24h`/`high24h`/`low24h`/`vol24h`/`source`(="htx")/`at`(ISO时间) |
 | **1.7** | 等 5 秒后再次执行 `curl http://localhost:3000/api/price/BTC \| python3 -m json.tool` | `price` 字段值与前一次略有波动（证明是实时数据，非固定 mock 值）。两次 `at` 时间戳不同 |
@@ -62,7 +62,7 @@ pnpm build
 | # | 操作步骤 | 预期结果 |
 |:-:|----------|----------|
 | **1.8** | `curl http://localhost:3000/api/agents/bull-1 \| python3 -m json.tool` | 返回单个 Agent JSON，`id="bull-1"`，`tier="active"`，含 `role`/`description` |
-| **1.9** | `curl http://localhost:3000/api/agents/standby-1 \| python3 -m json.tool` | 返回单个 Agent JSON，`id="standby-1"`，`tier="standby"` |
+| **1.9** | `curl http://localhost:3000/api/agents/neut-2 \| python3 -m json.tool` | 返回单个 Agent JSON，`id="neut-2"`，`tier="active"` |
 | **1.10** | `curl http://localhost:3000/api/agents/nonexistent \| python3 -m json.tool` | 返回 `404` 或 `{ error: "Agent not found" }`，系统不崩溃 |
 
 ### 三、加分项 🆕 C-21 — HTX 订单簿深度 + K 线数据

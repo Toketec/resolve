@@ -45,28 +45,23 @@ USDD（TRON 上的去中心化稳定币）
 **4 层 LLM 调用链，不是简单的「调个 API」：**
 
 ```
-市场到期（管理员触发）
+Market expires (triggered by admin)
     │
-Step 1 ── Orchestrator 调度
-    │      LLM 分析市场问题 + 6 个 Agent 能力档案
-    │      → 选出最优 3 个：{selected:[], reasoning:"..."}
-    │      Demo 中：对 BTC 市场选 BULL-1/BEAR-1/NEUT-1
-    │      → UI 展示「正在选择最优 Agent 组合…」
+Step 1 ── 6 Agents parallel reasoning (Promise.all)
+    │      Each agent has independent role prompt + curated evidence
+    │      Non-interfering, each returns {outcome, confidence, evidence[]}
+    │      6 agents across 6 independent dimensions
+    │      ~5-6 seconds total (6 parallel calls)
     │
-Step 2 ── 3 个 Agent 并行推理（Promise.all）
-    │      每个 Agent 有独立角色 prompt + 专属证据集
-    │      互不干扰，各自返回 {outcome, confidence, evidence[]}
-    │      耗时约 5 秒（3 次并行）
+Step 2 ── Weighted consensus
+    │      Weights: Exchange 1.0, Media 0.8, Onchain 0.9, Tech 0.7, Reg 0.7, Macro 0.8
+    │      YES sum vs NO sum → consensus_score
+    │      Threshold 0.65 → consensus reached
     │
-Step 3 ── 加权共识
-    │      权重: 交易所 1.0, 媒体 0.8, 链上 0.9
-    │      YES 加权和 vs NO 加权和 → consensus_score
-    │      阈值 0.65 → 达标则 consensus reached
-    │
-Step 4 ── 结果写入 Supabase + UI 逐条动画展示
+Step 3 ── Results written to Supabase + UI animation
 ```
 
-**总共 4 次 LLM 调用（1 次 selector + 3 次 agent），总耗时约 7 秒。**
+**总共 6 次 LLM 调用（6 个 Agent 并行），总耗时约 5-6 秒。**
 
 ### Q: 是调用什么模型？Claude？DeepSeek？
 
@@ -81,14 +76,38 @@ Step 4 ── 结果写入 Supabase + UI 逐条动画展示
 
 **跑在我们服务器上（Next.js API Route），Demo 阶段不开放用户配置。**
 
-| Tier | 数量 | 做什么 | 是否真调 LLM |
-|:----|:---:|--------|:----------:|
-| Orchestrator | 1 | 分析市场→选最优 3 个 Agent | ✅ 真实调用 |
-| **ACTIVE** | 3 | 独立推理+投票+证据输出 | ✅ 真实调用 |
-| **STANDBY** | 3 | UI 展示 Agent Pool 规模 | ❌ 仅展示 |
+| Tier | Count | Role | Real LLM Call? |
+|:----|:-----:|------|:--------------:|
+| ⚡ **BULL-1** (Exchange) | 1 | HTX price/orderbook → bullish analysis | ✅ |
+| ⚡ **BULL-2** (Tech) | 1 | TEE/L2 fundamentals → bullish supplement | ✅ |
+| ⚡ **BEAR-1** (Media) | 1 | News sentiment/regulation → bearish analysis | ✅ |
+| ⚡ **BEAR-2** (Regulation) | 1 | Global regulatory policy → bearish supplement | ✅ |
+| ⚡ **NEUT-1** (Onchain) | 1 | On-chain holdings/whales → neutral verdict | ✅ (B.AI priority) |
+| ⚡ **NEUT-2** (Macro) | 1 | Macro rates/geopolitics → neutral supplement | ✅ |
+
+**All 6 are ACTIVE — no STANDBY tier.** After market expiry, all 6 Agents reason in parallel across 6 independent dimensions for a full-spectrum verdict.
 
 **为何不开放配置？** 保证 Demo 稳定可控。评委看到的是经过预演的、可重复的一镜到底体验。
 **以后版本可以做成「用户选 Agent 组队」的模式。**
+
+### ⚠️ 关键澄清：Agent 是仲裁者，不是交易顾问
+
+**一个容易误解的问题：Agent 是帮用户分析该买 YES 还是 NO 的吗？**
+
+**不是。** Agent 扮演的是**裁判/仲裁者**的角色——市场到期后，Agent 分析证据、投票裁决结果、触发链上结算。它不是"帮用户选边下注"的交易顾问。
+
+```
+❌ 误解：Agent 分析 BTC 价格 → 告诉用户"建议买 YES" → 用户参考建议下单
+    ↑ 这是AI交易顾问，只在UI层加了一层，没有改变Web3的核心
+
+✅ 正解：用户自己选边下注 → 市场到期 → Agent 分析证据 → 共识裁决 → 链上结算
+    ↑ 这是AI仲裁预言机，替代了预测市场的裁决层（传统上是UMA人工投票）
+```
+
+**这个定位为什么重要：**
+- 如果我们做的是"AI 交易顾问"，那只改进了前端体验，没有触及 Web3 核心
+- 我们做的是"AI 仲裁预言机"，**直接替代了 Polymarket 最弱的一环——人工裁决层**
+- 后者是基础设施级创新，前者只是 ChatGPT 套壳
 
 ### Q: 你怎么证明 Agent 不是编造证据，而是真分析了数据？
 
@@ -110,6 +129,37 @@ Step 4 ── 结果写入 Supabase + UI 逐条动画展示
 ```
 
 评委可以**现场点开 Tronscan 或 HTX API** 验证数据真实性。
+
+---
+
+## 🎬 完整流程闭环（4 层分工）
+
+### 一次预测从开始到结束的完整路径
+
+以英雄市场 **"BTC 能否在 2026 年底前突破 $150,000？"** 为例：
+
+```
+阶段                        用户做                    Agent做                    系统做                   合约做
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+① 钱包连接(1min)         连TronLink+签名┄┄┄→       ❌无                        UI回显地址                ❌无
+② 买入预测(30s)          选YES+金额+TronLink签名   ❌无                        写Supabase持仓            buyShares()
+③ AI裁决(5-6s)           纯旁观┄┄┄→               6 Agent 并行推理(6LLM)┄┄→   计算共识+写DB+UI动画        ❌无
+                                                   → 6 票加权共识
+④ 链上结算(10s)          Owner签settle签名         ❌无                        调合约接口                 settle()
+                                                                                                         USDD→赢家✅
+```
+
+### 4 层各自做什么
+
+| 参与者 | 阶段①钱包 | 阶段②买入 | 阶段③裁决 | 阶段④结算 |
+|:------|:---------|:---------|:---------|:---------|
+| **🧑 User** | Install+connect+sign | Pick side+sign buyShares | Watch animation | Owner signs settle |
+| **🤖 Agent** | — | — | 6 Agents parallel vote + 6-vote consensus + x402 payment | — |
+| **🖥️ 系统** | 显示钱包地址 | 写Supabase+UI更新 | 共识计算+写DB+动画调度 | 调合约+UI更新 |
+| **💎 合约** | — | buyShares（USDD转入池） | — | settle（USDD转赢家） |
+
+**用户操作总计：3-4 次（装钱包、连钱包、买签名、Owner结算签名）**
+**Agent操作总计：6 次 LLM 调用 + 1 次 x402 支付（全自动，约 5-6 秒）**
 
 ---
 
@@ -166,20 +216,80 @@ Step 4 ── 结果写入 Supabase + UI 逐条动画展示
 
 ---
 
-## 五、技术深度
+## 五、与 Polymarket 对比 & UMA 详解
 
-### Q: 和 Polymarket 有什么区别？
+### Q: 什么是 UMA？Polymarket 的结算是怎么运作的？
 
-| 维度 | Polymarket | RESOLVE |
-|:----|:----------|:--------|
-| 裁决方式 | 人工+社区投票（UMB） | **AI Agent 自动推理+加权共识** |
-| 结算速度 | 人工裁决需数天 | **AI 裁决 < 10 秒** |
-| 透明度 | 投票过程不公开 | **证据完全溯源** |
-| 链 | Polygon | **TRON（HTX 生态）** |
-| AI 程度 | 无 AI | **多 Agent + Orchestrator + 证据驱动** |
-| 支付 | USDC | **USDD + \$HTX + x402** |
+**UMA（Universal Market Access）是一个去中心化金融合约协议，它提供了一个「代币持有者投票裁决」系统。** Polymarket 借用了这个系统来做市场结算。
 
-**一句话**：他们人工裁决，我们 AI 裁决——速度、透明度、可扩展性不在一个量级。
+**Polymarket 的结算流程：**
+
+```
+市场到期
+    ↓
+UMA 提问："BTC 年底是否突破 $150k？"
+    ↓
+UMA 代币持有者（任何持有代币的人）各自查资料投票
+    ↓
+大多数人的投票结果 = 最终结果
+    ↓
+结果写入链 → Polymarket 执行结算
+    ↓
+正确投票者获 UMA 奖励，错投者被罚
+```
+
+**为什么有人投票？** 因为需要经济激励来保证诚实——投票对了有奖（UMA 代币），错了被罚。这个机制叫 **Schelling Point（谢林点）**：当足够多人知道正确答案时，大家都会投正确的，因为投错丢钱。
+
+**UMA 的核心问题：**
+1. **慢** — 投票期 2-3 天，争议再加几天
+2. **不透明** — 你不知道谁投的、为什么投，只看一个结果
+3. **易被操纵** — 理论上大户可以同时持有大量 UMA 和仓位
+4. **模糊问题处理差** — "BTC $148k 算不算接近 $150k？" 的灰色判断容易引发争议
+
+### Q: 和 Polymarket 有什么区别？他们不也是自动结算吗？
+
+**关键区别在于「谁来做裁决」。** Polymarket 的"自动结算"是 UMA 代币持有者（人类）投票后自动执行——是**众包人工裁决**，不是 AI 裁决。
+
+| 维度 | Polymarket（UMA 投票） | RESOLVE（AI 裁决） |
+|:----|:---------------------|:-----------------|
+| **裁决者** | UMA 代币持有者（任何人，匿名） | **6 个 AI Agent（6 维全方位并行裁决）** |
+| **裁决速度** | 数天（投票期+争议期） | **~7 秒** |
+| **透明度** | 只给出 YES/NO 结果 | **每票带完整证据链（数据源+片段+时间戳），可溯源** |
+| **适用范围** | 简单 YES/NO 问题 | **复杂问题也可处理（多 Agent 分工查不同维度）** |
+| **费用** | UMA 代币激励成本 | LLM API 调用费（~\\$0.15-0.40/次） |
+| **证据开源** | ❌ 投票者不公布理由 | ✅ 每条 evidence 含 source/url/snippet |
+
+### Q: 但有些结果不是显而易见的吗？比如"总统是谁"，为什么还用 UMA 投票？
+
+**因为区块链有一个 20 年未解决的根本问题——Oracle Problem（预言机难题）：**
+
+> **智能合约跑在链上，但链上不知道链外世界发生了什么。**
+
+合约需要知道"BTC 价格多少？"、"谁赢了选举？"，但这些信息在链外。Polymarket 不能写死"以 CNN 报道为准"，因为：
+1. CNN 被黑了怎么办？
+2. Fox News 和 AP 宣布时间不一样——以哪个为准？
+3. 如果有重新计票争议，要不要等法庭判决？
+
+所以通行的方案是：**让一群人去验证常识（UMA 投票），而不是写死一个数据源。** 但这条路慢、不透明。
+
+**我们的方案是：让 AI 去分析证据做裁决，而不是让人投票。** 这是换了一条解决预言机难题的路径。
+
+### Q: 你们是交易顾问吗？Agent 帮用户分析该买哪边？
+
+**不是，这是一个非常关键的澄清。**
+
+❌ **误解**：Agent 分析 BTC 价格 → 告诉用户"建议买 YES" → 用户参考下单
+→ 这叫 AI 交易顾问，只改了前端体验，Web3 核心没动
+
+✅ **正解**：**用户自己判断、自己下注 → 市场到期 → Agent 仲裁裁决 → 链上结算**
+→ 这叫 AI 仲裁预言机，**替代了预测市场的裁决层（UMA 投票）**
+
+| | AI 交易顾问（我们不做） | AI 仲裁预言机（我们做） |
+|:--|:---------------------|:---------------------|
+| 定位 | Polymarket 的附加工具 | **直接替代 Polymarket 的核心基础设施** |
+| 创新 | 好用的前端 | **解决区块链 20 年预言机难题** |
+| 技术深度 | 调 Claude API 看行情 | 多 Agent 推理+共识+链上结算 |
+| 评委评价 | "好工具，但不算创新" | **"这是 Web3 基础设施创新"** |
 
 ### Q: AI 裁决的可靠性怎么保证？
 
@@ -191,13 +301,13 @@ Step 4 ── 结果写入 Supabase + UI 逐条动画展示
 
 **如果 AI 错了怎么办？** → 争议窗口机制（二期），社区可对 AI 裁决发起挑战投票。
 
-### Q: 为什么 Demo 限定在 3 个 ACTIVE Agent，不全部 6 个都用真的？
+### Q: Why 6 agents all at once instead of one by one?
 
-答案是：**不是技术限制，是成本控制和 Demo 节奏设计。**
+**Because Promise.all runs them in parallel.** All 6 Agents receive evidence simultaneously and call LLM independently — the fastest returns first. But the UI controls **display order** via animation — votes appear one at a time (~1-1.5s interval), creating the visual effect of "reasoning step by step" without increasing actual latency.
 
-- 6 个 Agent 同时推理 = 6x API 费用 = **每个市场 \$0.30+**，Demo 可以但无必要
-- 3 个投票 + 1 个 selector = 7 秒，刚好嵌入 45 秒 Demo 节奏
-- 3 个 STANDBY **展示了 Agent Pool 的扩展想象力**——评委看到的是 6 个候选，3 个激活
+- Actual time: 6 parallel calls ≈ 5-6 seconds (bounded by the slowest agent)
+- UI animation: votes reveal one-by-one ≈ 6-9 seconds
+- Demo effect: audience sees votes appearing sequentially, perceiving AI "thinking through" each dimension
 
 ---
 
@@ -230,7 +340,7 @@ x402 是 B.AI 的微支付协议。在我们的场景里：**Agent 完成推理�
 - Monorepo 管理，`pnpm install` + `pnpm dev` 一键启动
 - Supabase + TRON 的 Hybrid 架构**降低了复杂度而非增加**——该快的快（DB），该信任的信任（链）
 
-### "仅靠 3 个 AI Agent 做裁决，是不是不够安全？"
+### "How do you ensure security with 6 AI Agents making rulings?"
 
 **这不是生产版本**，是展示 AI × Web3 融合可行性的 Demo。完整版会引入：
 - 更多 Agent 轮次 + 争议窗口

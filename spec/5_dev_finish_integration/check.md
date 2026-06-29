@@ -59,8 +59,8 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 | # | 操作步骤 | 预期结果 | seam 验证 |
 |:-:|----------|----------|-----------|
 | 5.10 | 点击「Settle」 | 显示 txHash + "Settlement complete" 提示 | 调用 `POST /api/settle` → 调用 spec 4 合约 settle → 返回 txHash |
-| 5.11 | 打开 `/agents` | 显示 6 个 Agent（3 ACTIVE + 3 STANDBY） | 页面从 `GET /api/agents` 读取，而非静态数据 |
-| 5.12 | 点击某个 ACTIVE Agent | 显示 Agent 详情，含 8004 ID 和链上链接 | 🆕 B.AI 8004 身份展示 seam |
+| 5.11 | 打开 `/agents` | 显示 6 个 Agent（全部 active） | 页面从 `GET /api/agents` 读取，而非静态数据 |
+| 5.12 | 点击某个 Agent | 显示 Agent 详情，含 8004 ID 和链上链接 | 🆕 B.AI 8004 身份展示 seam |
 
 ---
 

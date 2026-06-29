@@ -103,29 +103,43 @@
 
 | 组件 | 说明 |
 |------|------|
-| Agent 推理引擎 | **Pool of 6 agents**: 3 ACTIVE (真实 Claude 推理) + 3 STANDBY (UI 展示) |
-| | 3 个 ACTIVE Agent 独立调用 Claude API，返回 `{outcome, confidence, evidence}` |
+| Agent 推理引擎 | **6 个 Agent 全部 ACTIVE** — 全部调用真实 LLM 推理，从 6 个独立维度（交易所/媒体/链上/技术/监管/宏观）并行裁决 |
+| | 6 个 Agent 独立调用 LLM API（Claude/B.AI），各自返回 `{outcome, confidence, evidence}` |
 | 证据收集器 | 从HTX API + 预精选证据集收集数据，喂给对应Agent |
 | 共识引擎 | 加权投票 → 加权共识。阈值 ≥ 0.65 |
 | 确定性护栏 | 英雄市场预演确保固定证据集下输出稳定 |
 
 **LLM Provider**: Anthropic Claude API（主）| DeepSeek API（备，通过OpenRouter代理）
 
-### 2.4 链上层
+### 2.4 On-chain Layer
 
-| 组件 | 技术 | 说明 |
-|------|------|------|
-| 结算合约 | Solidity + TVM | 部署到 TRON Shasta 测试网，预注资USDD |
-| 钱包连接 | TronLink Extension | 用户通过浏览器扩展连接 |
-| 节点服务 | Trongrid | 免费公共节点，无需自建节点 |
-| Agent身份 | B.AI 8004 Protocol | Agent在TRON上的链上身份注册 |
-| Agent支付 | B.AI x402 Protocol | Agent自主支付结算费 |
+| Component | Tech | Description |
+|-----------|------|-------------|
+| Settlement Contract | Solidity + TVM | Deployed to TRON Shasta testnet, pre-funded with USDD |
+| Wallet Connection | TronLink Extension | Users connect via browser extension |
+| Node Service | Trongrid | Free public node, no self-hosting needed |
+| Agent Identity | B.AI 8004 Protocol | Register AI Agent on-chain identity on TRON |
+| Agent Payment | B.AI x402 Protocol | Agent autonomously pays settlement fee |
 
-**为什么选 TRON 而非其他链**:
-- 比赛明确要求 HTX 生态 — TRON 是 HTX 底链
-- Shasta 测试网免费且稳定
-- B.AI 8004/x402 是比赛主办方核心生态资源
-- 低手续费、高吞吐（适合 Demo）
+**Why TRON instead of other chains**:
+- Contest explicitly requires HTX ecosystem — TRON is HTX's native chain
+- Shasta testnet is free and stable
+- B.AI 8004/x402 are the contest host's core products
+- Low fees, high throughput (ideal for Demo)
+
+**Comparison with Polymarket (UMA)**:
+Polymarket's arbitration layer relies on **UMA token holders voting manually** (days-long cycles, opaque results, ambiguous outcomes cause controversy). Our AI Agents directly replace this layer — after market expiry, all 6 Agents reason in parallel, completing a full 6-dimension verdict → consensus → trigger contract settlement in ~7 seconds.
+
+**Complete end-to-end flow (4-layer division)**:
+```
+Phase                     User Does         Agent Does                  System Does        Contract Does
+───────────────────────────────────────────────────────────────────────────────────────────────────────────
+① Wallet Connect(1min)  Connect+sign         —                          UI show address     —
+② Buy Prediction(30s)   Pick side+sign       —                          Write Supabase      buyShares()
+③ AI Resolution(7s)     Watch animation      6 Agents parallel(6LLM)    Consensus math+DB   —
+                                              → 6-vote consensus        +UI animation
+④ Settlement(10s)       Owner signs settle   —                          Call contract       settle()
+```
 
 ### 2.5 数据层
 

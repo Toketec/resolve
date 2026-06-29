@@ -1,7 +1,7 @@
 # RESOLVE — Documentation Index
 
 > **AI-native prediction markets for the HTX Genesis Hackathon.**
-> 6-Agent pool (3 ACTIVE real Claude reasoning + 3 STANDBY display) with Hybrid Web2 DB + TRON chain settlement.
+> 6-Agent full-parallel LLM reasoning (all 6 ACTIVE, 6 independent dimensions) with Hybrid Web2 DB + TRON chain settlement.
 > Team: Dev A (Chain/Money), Dev B (AI Oracle + Pitch), Dev C (App/Data/Seam).
 
 ---

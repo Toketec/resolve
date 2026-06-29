@@ -4,16 +4,15 @@
 
 当前 AI 推理是硬编码的 mock（`packages/ai/src/index.ts` 中返回固定预设值的 `resolveMarket`）。
 英雄镜头的核心卖点是"多个 AI Agent 基于真实证据独立推理，达成共识"——必须是真的。
-此规格将 mock 替换为真实 LLM 调用链，实现 **Orchestrator 调度 → 动态选 Agent → 并行推理 → 加权共识**。
+此规格将 mock 替换为真实 LLM 调用链，实现 **6 Agent 并行推理 → 加权 6 票共识**。不再有 Orchestrator selector 层——没有 6 选 3，所有 Agent 都是 ACTIVE。
 
 ## 工作边界
 
-- ✅ **Orchestrator 调度层** — 多一层 LLM 调用，分析市场问题 → 从 6 个 Agent 中智能选出最优 3 个
-- ✅ **Prompt 工程** — 设计 3 个 ACTIVE Agent 角色 prompt（交易所/媒体/链上）+ 3 个 STANDBY 定义
-- ✅ **Orchestrator prompt** — 设计调度层的 prompt：给定市场+6 Agent 档案 → 输出选择+理由
+- ✅ **6 Agent 并行推理引擎** — 用 Promise.all 并行调用 6 个 Agent 的 LLM，各自独立投票
+- ✅ **Prompt 工程** — 设计 6 个 Agent 角色 prompt（交易所/媒体/链上/技术/监管/宏观）
 - ✅ **精选证据集** — 针对英雄市场预取证据（HTX 价格/新闻/链上数据），避免实时抓取脆弱性
 - ✅ 实现真实 Claude API 调用 → parse 为结构化 {outcome, confidence, evidence}
-- ✅ 3 个 Agent 并行调用（Promise.all）→ 收集所有投票
+- ✅ 6 个 Agent 并行调用（Promise.all）→ 收集所有投票
 - ✅ 加权共识数学 + 确定性护栏
 - ✅ 更新 `packages/ai` 的 `resolveMarket()`
 - ✅ 支持多环境变量配置（`ANTHROPIC_API_KEY` / 未来 `BAI_API_KEY`）
@@ -26,12 +25,11 @@
 ```
 resolveMarket(market)
   │
-  ├── Step 1: orchestrator.selectAgents()
-  │     └── LLM 调用: 分析市场问题 + 6 个 Agent 能力档案
-  │     └── 返回: { selected: ["bull-1","bear-1","neut-1"], reasoning: "..." }
-  │
-  ├── Step 2: parallelAgentInference(selected)
-  │     └── 3 个并行 LLM 调用（每个 Agent 各自的角色 prompt + 证据集）
+  ├── Step 1: 6 Agent 并行推理（Promise.all）
+  │     ├── 每个 Agent 接收对应的专属证据集
+  │     └── 返回: { outcome, confidence, evidence[] }
+  ├── Step 2: 加权共识（6 票加权计算）
+  ├── Step 3: 结果写入 Supabase + UI 逐条动画
   │     └── 每个返回: { outcome, confidence, evidence[] }
   │
   ├── Step 3: computeConsensus(votes)
@@ -50,16 +48,15 @@ resolveMarket(market)
 
 ## 验收标准
 
-1. `orchestrator.selectAgents(market, agents)` 返回包含 selected[] + reasoning 的 JSON
-2. 对于 BTC 市场，orchestrator 选择 BULL-1/BEAR-1/NEUT-1 并给出合理理由
-3. `resolveMarket(heroMarket)` 返回 3 个 Agent 的投票，各有不同 outcome/confidence
+1. `resolveMarket(heroMarket)` 返回 6 个 Agent 的投票，各有不同 outcome/confidence
+2. 对于 BTC 市场，BULL-1 偏 YES、BEAR-1 偏 NO、NEUT-1 数据驱动、其余 3 个 Agent 各有独立判断
+3. 6 票加权共识输出 outcome + consensus_score（≥0.65 达成共识）
 4. 多次调用同一市场 → consensus 稳定（确定性护栏生效）
 5. 每次投票携带至少 1 条 evidence
-6. 加权共识输出 outcome + consensus_score（≥0.65）
+6. NEUT-1 优先走 B.AI API（如已配置）
 7. API key 不硬编码，从 `.env` 读取
-8. B.AI API key 配了之后，至少 1 个 Agent 走 B.AI API
-9. `pnpm typecheck` + `pnpm build` 通过
-10. 总调用耗时不超过 15 秒（1 次 selector + 3 次并行推理）
+8. `pnpm typecheck` + `pnpm build` 通过
+10. 总调用耗时不超过 15 秒（6 次并行 LLM 调用）
 
 ## 边界与约束
 

@@ -53,17 +53,35 @@ Solution: Multiple AI agents independently reason → curated evidence → conse
 Differentiation: Not "AI-wrapped Web3" — AI-native oracle replacement
 ```
 
-### 2.2 Differentiation Moats
+### 2.3 Differentiation Moats
 
-- **Not a Polymarket fork**: We are an AI Native Oracle (replacing Chainlink-style centralized solutions)
-- **Not a ChatGPT wrapper**: Multi-agent independent reasoning → weighted consensus → on-chain payout
-- **Not demo-only**: Real TRON testnet transactions + real AI reasoning + real settlement
+- **Not a Polymarket fork**: We are not a copycat with ChatGPT wrapper. We **replace UMA's human voting with AI multi-agent consensus** as the decentralized arbitration layer for prediction markets.
+- **Not a ChatGPT wrapper**: Multi-agent independent reasoning → weighted consensus → on-chain payout, each vote with a verifiable evidence chain.
+- **Not demo-only**: Real TRON testnet transactions + real AI reasoning + real settlement.
+- **Agent ≠ Trading Advisor**: Our Agents do NOT analyze markets to tell users which side to bet on. **Agents are arbitrators** who replace UMA token holders — after market expiry, they reason, vote, and trigger on-chain payouts. Users decide their own bets.
+
+### 2.4 Complete End-to-End Flow (4-Layer Division)
+
+```
+Phase                      User Does                  Agent Does                   System Does              Contract Does
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+① Wallet Connect          Connect TronLink+sign      —                            UI show address           —
+② Make Prediction         Pick YES+amount+sign       —                            Write Supabase position   buyShares()
+③ AI Resolution (5-6s)    Watch animation            6 Agents parallel(6LLM)     Consensus math+DB write   —
+                                                     → 6-vote consensus          +UI animation
+④ On-chain Settlement     Owner signs settle         —                            Call contract             settle()→USDD to winner
+```
+
+**User operations total**: 3-4 clicks (install wallet, connect, sign buy, owner signs settle)
+**Agent operations total**: 6 LLM calls + 1 x402 payment (fully automated, ~5-6 seconds)
+
+**One-sentence positioning**: Not "a prediction market with AI features" — but **an AI-native arbitration layer that replaces UMA human token voters as the decentralized verdict oracle for prediction markets**.
 
 ### 2.3 Scoring Strategy Matrix
 
 | Dimension | Target Score (out of 100) | Strategy |
 |-----------|:------------------------:|----------|
-| **Tech Innovation** | 85–90 | 6-Agent Pool, dynamic activation of 3 real Claude reasoning agents + weighted consensus + 8004/x402 |
+| **Tech Innovation** | 85–90 | 6-Agent full parallel LLM reasoning + 6-vote weighted consensus + 8004/x402 |
 | **Product Completeness** | 80–85 | Full frontend + end-to-end walking skeleton demo |
 | **Commercial Potential** | 75–80 | Prediction market × AI Agent economy narrative + clear roadmap |
 | **AI/Web3 Integration** | 90–95 | **Real AI calls + on-chain settlement + 8004 identity** — no fakes |
@@ -84,24 +102,32 @@ Differentiation: Not "AI-wrapped Web3" — AI-native oracle replacement
 
 **Core principle**: "Web2 speed + Web3 trust — not a compromise for the sake of being on-chain."
 
-### 3.2 Agent Pool Architecture (6 Agents)
+### 6 Active Agent Pool (All 6, Full Parallel, 6 Dimensions)
 
 | Tier | Count | Role | Description |
 |:----|:-----:|------|-------------|
-| ⚡ **Orchestrator** (selector) | 1 | agent-selector | 1 LLM call: analyze market → pick best 3 agents + reasoning |
-| ⚡ **ACTIVE** (selected) | 3 | BULL-1(Exchange) / BEAR-1(Media) / NEUT-1(Onchain) | Parallel real Claude reasoning → independent votes |
-| 💤 **STANDBY** (not selected) | 3 | BULL-2(Tech) / BEAR-2(Regulation) / NEUT-2(Macro) | Shown in Agent Pool with STANDBY badge |
+| ⚡ **BULL-1** (Exchange) | 1 | Bullish analysis | HTX BTC price, volume trends → technical bull bias |
+| ⚡ **BULL-2** (Tech) | 1 | Bullish supplement | AI/blockchain tech fundamentals — TEE, L2 scaling |
+| ⚡ **BEAR-1** (Media) | 1 | Bearish/cautious | News sentiment, regulatory dynamics → conservative bias |
+| ⚡ **BEAR-2** (Regulation) | 1 | Bearish supplement | Global regulatory risk — SEC, EU MiCA |
+| ⚡ **NEUT-1** (Onchain) | 1 | Neutral judgment | On-chain data, whale positions → data-driven neutral |
+| ⚡ **NEUT-2** (Macro) | 1 | Neutral supplement | Macro economy, interest rates, geopolitics |
+
+**No STANDBY tier anymore.** All 6 Agents reason in parallel after market expiry, each producing `{outcome, confidence, evidence[]}`, then 6-vote weighted consensus. This is full-spectrum verdict — exchange, media, on-chain, tech, regulatory, macro — no dimension missed.
+
+**Total time**: 6 parallel LLM calls ≈ 5-6 seconds (Promise.all)
+**Cost**: ~$0.30-0.60/resolve
+**Pitch line**: "6 Agents across 6 independent dimensions produce a full-spectrum verdict — not a partial judgment from 3 agents."
 
 **Resolve flow:**
 ```
-→ orchestrator.selectAgents()        (1 LLM call, ~2s)
-→ parallel inference on selected 3    (3 LLM calls, ~5s)
-→ weighted consensus                  (< 0.5s)
-→ UI: selection reasoning → votes 1-by-1 reveal animation
+→ all 6 receive evidence harness in parallel   (6 LLM calls, ~5s)
+→ weighted consensus                            (< 0.5s)
+→ UI: votes 1-by-1 reveal animation
 ```
 
 - Consensus threshold: 0.65
-- Total resolve time: ~7-8 seconds (fits in 45s demo)
+- Total resolve time: ~5-6 seconds (fits in 45s demo)
 
 ### 3.3 HTX Ecosystem — 3 Integrations
 

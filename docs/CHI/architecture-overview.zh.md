@@ -103,8 +103,8 @@
 
 | 组件 | 说明 |
 |------|------|
-| Agent 推理引擎 | **Pool of 6 agents**: 3 ACTIVE (真实 Claude 推理) + 3 STANDBY (UI 展示) |
-| | 3 个 ACTIVE Agent 独立调用 Claude API，返回 `{outcome, confidence, evidence}` |
+| Agent 推理引擎 | **6 个 Agent 全部 ACTIVE** — 全部调用真实 LLM 推理，从 6 个独立维度（交易所/媒体/链上/技术/监管/宏观）并行裁决 |
+| | 6 个 Agent 独立调用 LLM API（Claude/B.AI），各自返回 `{outcome, confidence, evidence}` |
 | 证据收集器 | 从HTX API + 预精选证据集收集数据，喂给对应Agent |
 | 共识引擎 | 加权投票 → 加权共识。阈值 ≥ 0.65 |
 | 确定性护栏 | 英雄市场预演确保固定证据集下输出稳定 |
@@ -126,6 +126,20 @@
 - Shasta 测试网免费且稳定
 - B.AI 8004/x402 是比赛主办方核心生态资源
 - 低手续费、高吞吐（适合 Demo）
+
+**与 Polymarket (UMA) 的对比**:
+Polymarket 的裁决层依赖 **UMA 代币持有者人工投票**（数天周期、结果不透明、灰色问题易争议）。我们的 AI Agent 直接替代这层——市场到期后 6 个 Agent 并行推理，7 秒完成全方位 6 维裁决→共识→触发合约结算。
+
+**完整流程闭环（4 层分工）**:
+```
+阶段                    用户做          Agent做                   系统做             合约做
+─────────────────────────────────────────────────────────────────────────────────────────────
+① 钱包连接(1min)     连TronLink+签名     —                       UI回显地址            —
+② 买入预测(30s)      选YES+金额+签名     —                       写Supabase持仓       buyShares()
+③ AI裁决(7s)         纯旁观             6 Agent 并行推理(6LLM)    共识计算+写DB+动画     —
+                                          → 6 票加权共识
+④ 链上结算(10s)      Owner签名settle    —                       调合约接口            settle()
+```
 
 ### 2.5 数据层
 

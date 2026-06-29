@@ -10,12 +10,20 @@ Shared types in `packages/shared/src/index.ts` — do NOT change without notifyi
 
 ## Spec Convention
 
-All work specs live in `spec/N_phase_name/` as triples:
+All work specs live in `spec/N_phase_name/` as quads:
 | File | Purpose |
 |------|---------|
-| `requirements.md` | Problem, dependencies, acceptance criteria, scope boundaries |
+| `requirements.md` | Problem, dependencies, scope boundaries |
 | `plan.md` | Execution plan — step order, file paths, pitfalls |
 | `tasks.md` | Task tracking — ID/description/status/Done checklist |
+| **`check.md`** | **Verification plan — AI self-check commands + manual test steps (curl/browser) + error recovery + bonus points** |
+
+## Verification Flow
+
+After completing a spec:
+1. Run AI self-checks in `spec/N/check.md` (typecheck, build, security scan)
+2. Follow manual test steps to verify each function
+3. Then run [docs/ENG/check.md](docs/ENG/check.md) for full project integration check
 
 **Granularity**: One spec group = 4-8h of solo work, independently executable.
 

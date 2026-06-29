@@ -93,36 +93,38 @@ getPrice(symbol): Promise<{ symbol, price, source, at }>
 | B-09 | Demo脚本(45s) | P1 | 2h | B-05 | 分秒级的演示话术和屏幕操作引导 |
 | B-10 | 路演排练 | P1 | 4h | B-08, B-09 | 流畅讲述+回答问题准备 |
 | B-11 | 社区投票文案 | P2 | 1h | — | 推特/社区一条可转发的内容 |
-| **B-12** | 🆕 **Prompt工程 — 3个ACTIVE Agent精准设计** | **P0** | **4h** | B-01 | 编写BULL-1/BEAR-1/NEUT-1三份角色prompt，每份含：角色人设、推理规则、证据集成方式、输出JSON schema、确定性护栏。hero market预演≥3次确保95%一致性 |
-| **B-13** | 🆕 **Orchestrator — 6选3智能调度Agent** | **P0** | **3h** | B-02 | 在resolve流程最前面增加一层LLM调用。给定市场问题+6个Agent能力描述，选最优3个ACTIVE+给出选择理由。selectAgent()返回 {selected:["bull-1","bear-1","neut-1"], reasoning:"..."} |
+| **B-12** | 🆕 **Prompt工程 — 6个Agent精准角色设计** | **P0** | **6h** | B-01 | 编写BULL-1/BULL-2/BEAR-1/BEAR-2/NEUT-1/NEUT-2六份角色prompt，每份含：角色人设、推理规则、证据集成方式、输出JSON schema、确定性护栏。hero market预演≥3次确保95%一致性 |
+| **B-13** | 🆕 **6 Agent 并行推理引擎** | **P0** | **3h** | B-02 | 在resolve流程中用Promise.all并行调用6个Agent的LLM推理。不再有selector层——所有Agent都是ACTIVE。resolveMarket()返回完整的6票+加权共识结果 |
 | **B-14** | 🆕 **B.AI LLM服务集成（视API兼容性）** | **P1** | **2h** | B-02, 用户提供B.AI Key | 将至少1个Agent（建议NEUT-1）的推理路由到B.AI提供的LLM服务。`.env`配`BAI_API_KEY`+`BAI_API_ENDPOINT`。兼容OpenAI格式则一行代码切换 |
 
 **B 的依赖风险**: Claude API key + rate limit → 提前测试调用频率。B.AI API兼容性待用户注册后确认。
-**B 的关键决策**: 先定 G6(3个Agent) 和 G8(英雄市场问题)，不决定就不开工。**新增B-13(Orchestrator)改变resolve流程为: selectAgent() → parallel inference → consensus。**
+**B 的关键决策**: 先定英雄市场问题，不决定就不开工。**resolve流程为: 6 Agent 并行推理 → 6 票加权共识。**
 
-**Agents角色设计建议**（更新：新增 Orchestrator 调度层）:
+**Agent 池（6 个全部 ACTIVE，6 维全方位裁决）**
 
-| Agent | ID | Tier | 角色 | 证据源 | Prompt风格 |
-|-------|-----|:----:|------|--------|-----------|
-| **Orchestrator** | agent-selector | ⚡ **调度层** | 总调度 | 市场问题+6个Agent档案 | 分析市场→选最优3个 |
-| **BULL-1** (交易所预言机) | bull-1 | ⚡ ACTIVE | 看多分析 | HTX BTC价格、交易量趋势 | 技术分析偏多 |
-| **BEAR-1** (媒体预言机) | bear-1 | ⚡ ACTIVE | 看空/谨慎 | 新闻情绪、监管动态 | 基本面偏保守 |
-| **NEUT-1** (链上预言机) | neut-1 | ⚡ ACTIVE | 中性判断 | 链上数据、持仓分布 | 数据驱动中性 |
-| **BULL-2** (技术预言机) | bull-2 | 💤 STANDBY | 备用看多 | — | — |
-| **BEAR-2** (监管预言机) | bear-2 | 💤 STANDBY | 备用看空 | — | — |
-| **NEUT-2** (宏观预言机) | neut-2 | 💤 STANDBY | 备选中性 | — | — |
+| Agent | ID | 角色 | 倾向 | 输入 | 输出 |
+|-------|-----|------|:----:|------|------|
+| **BULL-1** (交易所预言机) | bull-1 | ⚡ 看多分析 | 偏多 | HTX BTC价格、交易量趋势 | 技术分析偏多 |
+| **BULL-2** (技术预言机) | bull-2 | ⚡ 看多补充 | 偏多 | AI/区块链技术面（TEE/L2） | 基本面偏多 |
+| **BEAR-1** (媒体预言机) | bear-1 | ⚡ 看空/谨慎 | 偏空 | 新闻情绪、监管动态 | 基本面偏保守 |
+| **BEAR-2** (监管预言机) | bear-2 | ⚡ 看空补充 | 偏空 | 全球监管政策（SEC/MiCA） | 政策面偏空 |
+| **NEUT-1** (链上预言机) | neut-1 | ⚡ 中性判断 | 中性 | 链上数据、持仓分布 | 数据驱动中性 |
+| **NEUT-2** (宏观预言机) | neut-2 | ⚡ 中性补充 | 中性 | 宏观经济、利率、地缘政治 | 宏观面中性 |
 
-**resolve 流程（更新）**:
+**设计说明**: UI 展示 6 个 Agent。市场到期后 6 个 Agent 并行 LLM 推理，各自输出 `{outcome, confidence, evidence[]}`。6 票加权共识。不再有 STANDBY 层级，也没有 Orchestrator 的"6选3"选择层。6 个独立维度覆盖全方位判断。
+
+**证据分配**: 每个 Agent 接收与其角色定位匹配的专属证据集（HTX API数据、新闻、链上数据等），通过预选证据集确保稳定可复现。
 ```
 Market expires (triggered)
-  → orchestrator.selectAgent(market, all_agents)  ← 新增！多一层LLM调用
-    → 返回 {selected: ["bull-1","bear-1","neut-1"], reasoning: "..."}
-  → parallel inference on selected 3 agents
-  → weighted consensus
-  → UI shows Agent Selection reason → votes 1-by-1
+   → 6 Agent parallel inference (Promise.all)
+   → weighted consensus (6 votes)
+   → UI: votes 1-by-1 reveal animation
+   → settlement trigger
 ```
 
-**设计说明**: UI 展示 6 个 Agent 的 Pool + 1 个 Orchestrator 调度器。Orchestrator 先展示"正在选择最优 Agent 组合…"动画，然后 3 个被选中的 Agent 依次推理。未选中的显示"Standby for this market"。
+**设计说明**: UI 展示 6 个 Agent。市场到期后 6 个 Agent 并行 LLM 推理，各自输出 `{outcome, confidence, evidence[]}`，6 票加权共识。UI 逐条展示 votes 动画，制造"逐步推理"的视觉效果。
+
+**证据分配**: 每个 Agent 接收与其角色定位匹配的专属证据集（HTX API数据、新闻、链上数据等），通过预选证据集确保稳定可复现。
 
 ---
 

@@ -53,7 +53,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 1. `curl http://localhost:3000/api/markets` → JSON 数组，6+ 条市场
 2. `curl http://localhost:3000/api/markets/btc-150k-2026` → 单条市场，slug 匹配
 3. `curl http://localhost:3000/api/markets/btc-150k-2026/resolve` → AIConsensus，含 votes
-4. `curl http://localhost:3000/api/agents` → 6 个 Agent（3 active + 3 standby）
+4. `curl http://localhost:3000/api/agents` → 6 个 Agent（全部 active）
 5. `curl -X POST http://localhost:3000/api/buy ...` → Position，含 txHash
 6. `curl http://localhost:3000/api/price/BTC` → 价格数据，再次调用验证非静态值
 
@@ -124,7 +124,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 4. Buy YES → `POST /api/buy` → TronLink 签名 → 仓位 — **seam 买入→链**
 5. Resolve → `GET /api/markets/[slug]/resolve` → ConsensusMeter 显示投票 — **seam resolve→AI**
 6. Settle → `POST /api/settle` → txHash — **seam 结算→合约**
-7. `/agents` → `GET /api/agents` → 6 个 Agent（3 ACTIVE + 3 STANDBY）
+7. `/agents` → `GET /api/agents` → 6 个 Agent（全部 active）
 8. 🆕 Agent 详情显示 8004 ID + Tronscan 链接
 9. 🆕 ConsensusMeter 下方显示 x402 交易哈希
 

@@ -4,17 +4,16 @@
 
 | Agent | ID | 角色 | Prompt 定位 |
 |-------|-----|------|-------------|
-| **Orchestrator** | agent-selector | ⚡ **调度层** | 分析市场问题+6个Agent档案 → 选最优3个+理由 |
-| **BULL-1** | bull-1 | ⚡ ACTIVE | 交易所预言机: BTC 价格趋势、成交量、HTX 订单簿信号 |
-| **BEAR-1** | bear-1 | ⚡ ACTIVE | 媒体预言机: 新闻情绪、监管动态、宏观风险 |
-| **NEUT-1** | neut-1 | ⚡ ACTIVE | 链上预言机: 链上持仓、大额转账、矿工活动 |
-| **BULL-2** | bull-2 | 💤 STANDBY | 技术预言机（备用）— 展示用 |
-| **BEAR-2** | bear-2 | 💤 STANDBY | 监管预言机（备用）— 展示用 |
-| **NEUT-2** | neut-2 | 💤 STANDBY | 宏观预言机（备用）— 展示用 |
+| **BULL-1** | bull-1 | ⚡ 交易所预言机 | BTC 价格趋势、成交量、HTX 订单簿信号 → 偏多分析 |
+| **BULL-2** | bull-2 | ⚡ 技术预言机 | AI/区块链技术面（TEE/L2） → 偏多补充 |
+| **BEAR-1** | bear-1 | ⚡ 媒体预言机 | 新闻情绪、监管动态、宏观风险 → 偏空/谨慎 |
+| **BEAR-2** | bear-2 | ⚡ 监管预言机 | 全球监管政策、SEC、MiCA → 偏空补充 |
+| **NEUT-1** | neut-1 | ⚡ 链上预言机 | 链上持仓、大额转账、矿工活动 → 数据驱动中性 |
+| **NEUT-2** | neut-2 | ⚡ 宏观预言机 | 宏观经济、利率政策、地缘政治 → 中性补充 |
 
 ---
 
-## Step 0: Prompt 工程先决（质量决定 Demo 命运）
+### Step 0: Prompt 工程先决（质量决定 Demo 命运）
 
 > 以下 prompt 内容需要 Dev B 精心编写。每个 prompt 是独立文件，是项目的核心知识产权。
 
@@ -23,9 +22,9 @@
 每个 prompt 结构:
 ```
 /**
- * Agent 身份: 交易所预言机 / 媒体预言机 / 链上预言机
+ * Agent 身份: 交易所预言机 / 媒体预言机 / 链上预言机 / 技术 / 监管 / 宏观
  * 角色温度: 偏多 / 偏保守 / 中性
- * 核心技能: 技术分析 / 新闻理解 / 链上数据解读
+ * 核心技能: 技术分析 / 新闻理解 / 链上数据解读 / 宏观分析
  */
 
 Role: "You are an expert {role} oracle..."
@@ -43,14 +42,6 @@ Schema: {
 Guardrails: [
   "If evidence is insufficient, default confidence 0.50"
 ]
-```
-
-**Orchestrator prompt**（新增）:
-```
-Role: "You are an AI Agent dispatcher..."
-Task: "Given this market question and 6 agent profiles, select the 3 best agents..."
-Input: { market_question: string, agents: AgentProfile[] }
-Output: { selected: string[], reasoning: string, confidence: number }
 ```
 
 ---
@@ -94,13 +85,6 @@ export async function askAgent(
   provider: 'claude' | 'bai',
   apiKey: string
 ): Promise<{ outcome: Outcome; confidence: number; evidence: Evidence[] }>
-
-export async function selectAgents(
-  market: Market,
-  allAgents: AgentProfile[],
-  provider: 'claude' | 'bai',
-  apiKey: string
-): Promise<{ selected: string[]; reasoning: string }>
 ```
 
 - Claude: 使用 Anthropic SDK `messages.create()`
@@ -129,21 +113,17 @@ export async function resolveMarket(market: Market): Promise<AIConsensus> {
   const apiKey = process.env.ANTHROPIC_API_KEY!;
   const baiKey = process.env.BAI_API_KEY;
 
-  // Step 1: Orchestrator 选 Agent
-  const { selected, reasoning } = await selectAgents(market, allAgents);
-
-  // Step 2: 并行推理选中的 3 个 Agent（可按角色分配不同 provider）
+  // 6 Agent 并行推理（全部 ACTIVE，无 selector 层）
   const votes = await Promise.all(
-    selected.map(agentId => {
-      const agent = allAgents.find(a => a.agentId === agentId)!;
-      const provider = agentId === 'neut-1' && baiKey ? 'bai' : 'claude';
+    allAgents.map(agent => {
+      const provider = agent.agentId === 'neut-1' && baiKey ? 'bai' : 'claude';
       return askAgent(agent.prompt, evidenceSet, provider, provider === 'bai' ? baiKey! : apiKey);
     })
   );
 
-  // Step 3: 加权共识
+  // 6 票加权共识
   const consensus = computeConsensus(votes);
-  return { ...consensus, orchestrator: { selected, reasoning } };
+  return { votes, ...consensus };
 }
 ```
 
@@ -158,25 +138,26 @@ BAI_API_ENDPOINT=https://...
 
 ```bash
 cd packages/ai
-ANTHROPIC_API_KEY=sk-... npx tsx src/index.ts  # 手动测试 selectAgent → resolve
+ANTHROPIC_API_KEY=*** npx tsx src/index.ts  # 手动测试 resolve 全流程
 ```
 
 ## 注意事项
 
-- Claude API 有 rate limit，测试时注意频率
+- Claude API 有 rate limit，测试时注意频率（6 次并行调用更高）
 - 确定性护栏的核心: 精选证据集中 YES 偏向 + prompt 中隐式预判引导
-- 如果 Orchestrator 或 Agent 调用失败 → 回退到固定 3 个 Agent + mock fallback
+- 如果某个 Agent 调用失败 → 跳过该 Agent（不从 6 个降级）
 - B.AI API 兼容 OpenAI 格式时，`llm.ts` 中 `askBai()` 只需一个 fetch 调用
 - NEUT-1 建议优先走 B.AI（展示生态集成），其他走 Claude（稳定性优先）
+- 6 次并行 Promise.all：最慢的一个决定总耗时，建议各 Agent 使用同一 provider 以减少差异
 
 ## 关键文件
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| `packages/ai/src/prompts.ts` | [新建] | 3 Agent prompt + 1 Orchestrator prompt |
+| `packages/ai/src/prompts.ts` | [新建] | 6 个 Agent 角色 prompt（交易所/媒体/链上/技术/监管/宏观） |
 | `packages/ai/src/evidence.ts` | [新建] | 精选证据集 |
 | `packages/ai/src/llm.ts` | [新建] | 通用 LLM 调用（支持 Claude + B.AI） |
-| `packages/ai/src/consensus.ts` | [新建] | 加权共识数学 |
-| `packages/ai/src/index.ts` | [修改] | resolveMarket 真实实现（含 selector） |
+| `packages/ai/src/consensus.ts` | [新建] | 加权共识数学（6 票加权） |
+| `packages/ai/src/index.ts` | [修改] | resolveMarket 真实实现（6 Agent 并行推理） |
 | `packages/ai/.env.example` | [新建] | 环境变量模板 |
 | `packages/ai/package.json` | [修改] | 添加 @anthropic-ai/sdk |

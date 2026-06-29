@@ -18,19 +18,22 @@ Polymarket-like prediction markets where AI agents (not humans or centralized or
 
 ## Spec Convention
 
-所有开发规格以「一组三文档」形式存放在 `spec/N_phase_name/` 目录下：
+所有开发规格以「一组四文档」形式存放在 `spec/N_phase_name/` 目录下：
 
 | 文件 | 内容 |
 |------|------|
-| `requirements.md` | 解决什么问题、依赖项、验收标准、边界说明 |
+| `requirements.md` | 解决什么问题、依赖项、边界说明 |
 | `plan.md` | 实现执行计划——步骤、顺序、依赖、文件路径、注意事项 |
 | `tasks.md` | 任务项跟踪——每项 ID/描述/状态/Done 检查条件 |
+| **`check.md`** | **专项验收方案——AI 自检步骤 + 人工检查点 + 错误恢复预案 + 加分项清单** |
 
 **粒度原则**：事物边界清晰、能独立解决的中等任务单位。一个规格组应可在 4-8 小时内由单人或子 agent 完整完成。
 
 **AI 使用规则**：Hermes Agent（公孙离）按 `plan.md` 执行任务，完成后更新 `tasks.md` 状态。每完成一项打勾。
 
-**验收流程**：每个 spec 完成后，按 [docs/ENG/check.md](docs/ENG/check.md) (或中文版 [docs/CHI/check.zh.md](docs/CHI/check.zh.md)) 执行总验收，或参考 spec/N/check.md 做专项验收（先 AI 自检 `pnpm typecheck + pnpm build`，再罗列人工检查步骤等待用户操作验证）。
+**验收流程**：每个 spec 完成后，按 [docs/ENG/check.md](docs/ENG/check.md)（或中文版 [docs/CHI/check.zh.md](docs/CHI/check.zh.md)）执行**总验收**，或参考 `spec/N/check.md` 做**专项验收**：
+1. AI 自检：`pnpm typecheck + pnpm build` + 安全扫描等自动化脚本
+2. 人工检查：罗列具体操作步骤（curl 命令、浏览器操作等），每步标注预期结果和加分项
 
 **🛑 提交规则**：禁止自动 `git commit` 或 `git push`。任何提交前必须向用户展示改动内容并**明确询问**（"可以提交了吗？"），获得用户口头确认后方可执行。包括但不限于：代码改动、文档更新、spec 状态更新、配置文件修改。
 
@@ -61,37 +64,55 @@ pnpm typecheck         # Type-check all
 ```
 resolve/
 ├── docs/                    # Bilingual docs: ENG/ + CHI/ + archive/
-│   ├── ENG/                 # English (7 files)
-│   ├── CHI/                 # 中文文档 (7 files)
-│   └── archive/             # Superseded documents
+│   ├── ENG/                 # English (7 files: architecture, strategy, judge QA, etc.)
+│   ├── CHI/                 # 中文文档 (7 files, mirroring ENG/)
+│   └── archive/             # Superseded historical documents
 ├── apps/
-│   ├── web/           # @resolve/web — Next.js 16
-│   └── contracts/     # @resolve/contracts — Solidity
+│   ├── web/            # @resolve/web — Next.js 16 (pages, API routes, components)
+│   └── contracts/      # @resolve/contracts — Solidity settlement contract
 ├── packages/
-│   ├── shared/        # @resolve/shared — Types + API contracts
-│   ├── ai/            # @resolve/ai — Oracle logic
-│   └── db/            # @resolve/db — Supabase client + data layer
+│   ├── shared/         # @resolve/shared — Types + API contracts
+│   ├── ai/             # @resolve/ai — Agent prompts, LLM calls, consensus math
+│   └── db/             # @resolve/db — Supabase client + data layer
+├── spec/               # Development specs, one dir per phase
+│   ├── 1_dev_finish_core_api/
+│   ├── 2_dev_finish_wallet/
+│   ├── 3_dev_finish_ai_oracle/
+│   ├── 4_dev_finish_contract/
+│   ├── 5_dev_finish_integration/
+│   └── 6_dev_finish_demo_ux/
+├── AGENTS.md           # This file — project overview for AI agents
+├── CLAUDE.md           # Claude Code entry point
+└── pnpm-workspace.yaml # Monorepo workspace config
 ```
+
+Each spec dir (`spec/N/`) contains 4 files:
+- `requirements.md` — Problem, dependencies, scope boundaries
+- `plan.md` — Step-by-step execution plan
+- `tasks.md` — Task tracking with status checkboxes
+- **`check.md`** — **Dedicated verification plan** with AI self-check commands, manual test steps (curl/browser), error recovery scenarios, and bonus point checklist
 
 ## Hero Market
 
 **Will Bitcoin close above $150,000 by Dec 31, 2026?**
 
-**Orchestrator + 6-Agent Pool**: Orchestrator 先选最优3个 → 并行推理 → 共识
+**Orchestrator + 6-Agent Pool**: 6 个 Agent 全部 ACTIVE，市场到期后并行 LLM 推理 → 6 票加权共识
 
 | Tier | Agents | What they do |
 |:----|--------|-------------|
-| ⚡ **Orchestrator** (selector) | agent-selector | 1 LLM call: analyze market → pick best 3 agents + reasoning |
-| ⚡ **ACTIVE** (selected by orchestrator) | BULL-1(Exchange) / BEAR-1(Media) / NEUT-1(Onchain) | 3 parallel LLM calls with role prompts → independent votes |
-| 💤 **STANDBY** (not selected for this market) | BULL-2(Tech) / BEAR-2(Regulation) / NEUT-2(Macro) | Shown in Agent Pool with STANDBY + "Not selected for this market" badge |
+| ⚡ **BULL-1** (Exchange oracle) | bull-1 | HTX price/orderbook → bullish technical analysis |
+| ⚡ **BULL-2** (Tech oracle) | bull-2 | TEE/L2 fundamentals → bullish supplement |
+| ⚡ **BEAR-1** (Media oracle) | bear-1 | News sentiment/regulation → bearish/cautious analysis |
+| ⚡ **BEAR-2** (Regulation oracle) | bear-2 | Global regulatory policy → bearish supplement |
+| ⚡ **NEUT-1** (Onchain oracle) | neut-1 | On-chain data/whale positions → data-driven neutral |
+| ⚡ **NEUT-2** (Macro oracle) | neut-2 | Macro economy/geopolitics → neutral supplement |
 
 **Full resolve flow**:
 ```
-  → orchestrator.selectAgents()        (1 LLM call, ~2s)
-  → parallel inference on selected 3    (3 LLM calls in parallel, ~5s)
-  → weighted consensus
-  → UI: selection reasoning → votes 1-by-1
+  → all 6 receive evidence in parallel (6 LLM calls, ~5s)
+  → weighted 6-vote consensus
+  → UI: votes 1-by-1 reveal animation
 ```
 
 - Consensus threshold: 0.65
-- All original project history preserved under apps/web/
+- All 6 Agents are ACTIVE — no STANDBY tier

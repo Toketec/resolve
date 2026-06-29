@@ -53,7 +53,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 1. `curl http://localhost:3000/api/markets` → JSON array, 6+ markets
 2. `curl http://localhost:3000/api/markets/btc-150k-2026` → single market with slug match
 3. `curl http://localhost:3000/api/markets/btc-150k-2026/resolve` → AIConsensus with votes
-4. `curl http://localhost:3000/api/agents` → 6 agents (3 active + 3 standby)
+4. `curl http://localhost:3000/api/agents` → 6 agents (all active, no standby)
 5. `curl -X POST http://localhost:3000/api/buy ...` → Position with txHash
 6. `curl http://localhost:3000/api/price/BTC` → price data, re-call for non-static check
 
@@ -124,7 +124,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets
 4. Buy YES → `POST /api/buy` → TronLink sign → Position — **seam buy→chain**
 5. Resolve → `GET /api/markets/[slug]/resolve` → votes in ConsensusMeter — **seam resolve→AI**
 6. Settle → `POST /api/settle` → txHash — **seam settle→contract**
-7. `/agents` → `GET /api/agents` → 6 agents (3 ACTIVE + 3 STANDBY)
+7. `/agents` → `GET /api/agents` → 6 agents (all active)
 8. 🆕 Agent detail shows 8004 ID + Tronscan link
 9. 🆕 x402 tx hash below ConsensusMeter
 

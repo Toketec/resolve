@@ -32,7 +32,7 @@
 ### 人工检查 — 真实数据路由（来自 Supabase / HTX）
 - [ ] `curl http://localhost:3000/api/markets` 返回 JSON 数组，含英雄市场 `btc-150k-eoy`
 - [ ] `curl http://localhost:3000/api/markets/btc-150k-eoy` 返回单条市场（含 question/status/expires_at）
-- [ ] `curl http://localhost:3000/api/agents` 返回 6 个 Agent（bull-1/bear-1/neut-1 active + 3 standby）
+- [ ] `curl http://localhost:3000/api/agents` 返回 6 个 Agent（全部 active，全部有 role/powered_by）
 - [ ] `curl http://localhost:3000/api/agents/bull-1` 返回单个 Agent（含 role/tier/powered_by）
 - [ ] `curl http://localhost:3000/api/price/BTC` 返回 HTX 实时价格（price 字段不是固定值，随市场变化）
 - [ ] `curl http://localhost:3000/api/price/BTC/depth` 返回 HTX 订单簿（bids/asks 非空数组）

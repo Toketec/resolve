@@ -36,7 +36,7 @@
 2. Supabase 迁移 `00002_add_agents.sql` 可执行
 3. `GET /api/markets` 返回 Supabase 中的真实市场数据（种子数据 btc-150k-eoy）
 4. `GET /api/markets/[slug]` 返回单条市场
-5. `GET /api/agents` 返回 6 个 Agent（3 active + 3 standby），含 role/tier/powered_by 字段
+5. `GET /api/agents` 返回 6 个 Agent（全部 active），含 role/tier/powered_by 字段
 6. `GET /api/agents/[id]` 返回单个 Agent 详情
 7. `GET /api/price/[symbol]` 返回 HTX 实时价格（非 mock）
 8. `GET /api/price/[symbol]/depth` 返回 HTX 订单簿深度（非 mock）
