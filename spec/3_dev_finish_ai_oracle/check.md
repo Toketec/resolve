@@ -111,7 +111,7 @@ console.log('Agent profiles:', AGENT_PROFILES.length);
 |:-:|----------|----------|:------:|
 | 3.7a | 从返回的 votes 中提取所有 evidence，搜索 HTX/BTC 价格相关条目 | 至少 1 条 evidence 包含 `"HTX"` 或 `"火币"` 或 `"Huobi"` 或 BTC 价格数值，来源为 HTX | 🏆 |
 | 3.7b | BULL-1（交易所预言机）的 evidence 第一条 | 应为 HTX 实时价格数据（如 `{ source: "HTX API", kind: "price" }`） | 🏆 |
-| 3.7c | 检查 evidence 的 `url` | 指向 HTX 交易对页面（如 `https://www.htx.com/trade/btc_usdt`） | 🏆⭐ |
+| 3.7c | 检查 evidence 的 `url` | 指向 HTX 交易对页面（如 `https://www.htx.com/trade/btc_usdd`） | 🏆⭐ |
 
 ---
 

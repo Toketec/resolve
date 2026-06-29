@@ -119,7 +119,7 @@ Step 3 ── Results written to Supabase + UI animation
   "evidence": [
     {
       "source": "HTX 交易所",
-      "url": "https://api.htx.com/market/detail/merged?symbol=btcusdt",
+      "url": "https://api.htx.com/market/detail/merged?symbol=btcusdd",
       "snippet": "BTC 当前价格: $128,450, 24h 涨幅 +3.2%",
       "kind": "price_data",
       "timestamp": "2026-06-28T10:00:00Z"

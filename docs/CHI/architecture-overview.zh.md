@@ -176,7 +176,7 @@ Polymarket 的裁决层依赖 **UMA 代币持有者人工投票**（数天周期
 ### 3.1 🟢 HTX 公开 API — 价格数据
 
 **用途**: Agent 证据源的实时价格数据
-**接口**: `GET https://api.htx.com/market/detail/merged?symbol=btcusdt`
+**接口**: `GET https://api.htx.com/market/detail/merged?symbol=btcusdd`
 **免费**: ✅ 无需 API Key，公开市场数据
 **集成点**: `GET /api/price/:symbol` 作为代理，前端和Agent消费
 

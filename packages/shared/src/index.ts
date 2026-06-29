@@ -42,10 +42,10 @@ export interface Trade {
   at: string; user: { name: string; address: string };
 }
 export interface ResolveResult { marketId: string; outcome: Outcome; confidence: number; threshold: number; votes: AgentVote[]; finalizedAt: string; }
-export interface BuyRequest { marketId: string; side: Outcome; amountUSDT: number; }
+export interface BuyRequest { marketId: string; side: Outcome; amountUSDD: number; }
 export interface BuyResult { txHash: string; shares: number; avgPrice: number; }
 export interface SettleRequest { marketId: string; outcome: Outcome; }
 export interface SettleResult { txHash: string; paidOut: boolean; }
 export interface PriceSnapshot { pair: string; price: number; volume24h: number; source: string; timestamp: number; }
-export interface WalletState { connected: boolean; address: string; network: "tron-testnet" | "tron-mainnet"; balanceUSDT: number; }
+export interface WalletState { connected: boolean; address: string; network: "tron-testnet" | "tron-mainnet"; balanceUSDD: number; }
 export interface CreateMarketInput { title: string; description: string; resolutionCriteria: string; category: Category; expiresAt: string; initialLiquidity: number; }

@@ -22,7 +22,7 @@ status: pending
 | P3 | Supabase 迁移 `00001_initial_schema.sql` 已执行 | Dashboard SQL Editor 确认 `markets` 表存在 |
 | P4 | Supabase 迁移 `00002_add_agents.sql` 已执行 | Dashboard SQL Editor 确认 `agents` 表存在且有 6 条种子数据 |
 | P5 | 开发服务器已启动，终端无报错 | `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets` 返回 `200` |
-| P6 | HTX 公开 API 可达（无需注册/API Key） | `curl -s https://api.htx.com/market/detail/merged?symbol=btcusdt | head -c 100` 返回 JSON |
+| P6 | HTX 公开 API 可达（无需注册/API Key） | `curl -s https://api.htx.com/market/detail/merged?symbol=btcusdd | head -c 100` 返回 JSON |
 
 ---
 
@@ -126,7 +126,7 @@ pnpm build
 
 ## 📝 备注
 
-- HTX API 使用 `btcusdt` 格式（小写无分隔符）。API Route 中需要将前端传入的 `BTC` 转换为 `btcusdt` 再请求 HTX
+- HTX API 使用 `btcusdd` 格式（小写无分隔符）。API Route 中需要将前端传入的 `BTC` 转换为 `btcusdd` 再请求 HTX
 - Next.js 16 App Router 中 `params` 为 `Promise` 类型：`{ params }: { params: Promise<{ slug: string }> }`
 - 所有日期保持 ISO 字符串格式
 - `POST /api/buy` 的数据已真实写入 Supabase `positions` 表！可在 Supabase Dashboard 中检查该表是否有新记录
