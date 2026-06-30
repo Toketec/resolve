@@ -187,6 +187,11 @@
   .pulse-dot {
     animation: pulse-soft 1.6s ease-in-out infinite;
   }
+
+  /* Vote 卡片逐条浮现：淡入 + 上移 */
+  .vote-enter {
+    animation: vote-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
 }
 
 @keyframes ticker-x {
@@ -200,6 +205,10 @@
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.45; transform: scale(0.85); }
+}
+@keyframes vote-in {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 ::-webkit-scrollbar {

@@ -120,13 +120,13 @@ export default function LandingPage() {
               "CLAUDE 4.7",
               "GPT-5",
               "PRIVY WALLETS",
-              "USDC",
+              "USDD",
               "HTX ECOSYSTEM",
               "B.AI COMPUTE",
               "CLAUDE 4.7",
               "GPT-5",
               "PRIVY WALLETS",
-              "USDC",
+              "USDD",
             ].map((p, i) => (
               <span key={i} className="flex items-center gap-12">
                 <span>{p}</span>

@@ -171,7 +171,7 @@ export default function CreateMarketPage() {
 
           {step === 2 && (
             <>
-              <Field label="Seed liquidity (USDC)">
+              <Field label="Seed liquidity (USDD)">
                 <input
                   value={liquidity}
                   inputMode="decimal"
@@ -206,7 +206,7 @@ export default function CreateMarketPage() {
               <Summary label="Criteria" value={criteria || "—"} />
               <Summary label="Threshold" value={`${threshold}%`} />
               <Summary label="Expires" value={expiry} />
-              <Summary label="Seed liquidity" value={`${liquidity || 0} USDC`} />
+              <Summary label="Seed liquidity" value={`${liquidity || 0} USDD`} />
             </div>
           )}
 

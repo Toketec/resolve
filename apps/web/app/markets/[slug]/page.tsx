@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, ExternalLink, FileText, Globe2, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, FileText } from "lucide-react";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { StatusChip } from "@/components/ui/status-chip";
-import { ConsensusMeter } from "@/components/consensus-meter";
 import { TradePanel } from "@/components/trade-panel";
 import { PriceChart } from "@/components/price-chart";
-import { agentById, marketBySlug, MOCK_TRADES } from "@/lib/mock";
-import { fetchMarket } from "@/lib/api-client";
+import { OracleDeliberation } from "@/components/oracle-deliberation";
+import { marketBySlug, MOCK_TRADES } from "@/lib/mock";
+import { fetchMarket, fetchAgents } from "@/lib/api-client";
+import { FALLBACK_AGENTS, type ApiAgent } from "@/lib/mappers";
 import { formatPct, formatRelative, formatUSD, shortAddr } from "@/lib/utils";
 import type { Market } from "@/lib/types";
 
@@ -19,8 +20,11 @@ export default async function MarketDetailPage({ params }: PageProps) {
   const { slug } = await params;
   // 从 API 读取市场；失败回退 mock（视觉不变）
   let market: Market | undefined;
+  let agents: ApiAgent[] = FALLBACK_AGENTS;
   try {
-    market = await fetchMarket(slug);
+    const [m, a] = await Promise.all([fetchMarket(slug), fetchAgents()]);
+    market = m;
+    if (Array.isArray(a) && a.length) agents = a;
   } catch {
     market = marketBySlug(slug);
   }
@@ -70,103 +74,8 @@ export default async function MarketDetailPage({ params }: PageProps) {
         <div className="space-y-6">
           <PriceChart history={market.history} yesPrice={market.yesPrice} />
 
-          {/* Consensus + Agent votes */}
-          <section className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">
-            <div className="flex items-center justify-between border-b-2 border-ink bg-raised px-4 py-3">
-              <p className="font-score text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
-                Oracle deliberation
-              </p>
-              <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
-                {market.consensus?.status === "consensus" ? "settled" : "open"}
-              </p>
-            </div>
-            <div className="space-y-4 p-4">
-              {market.consensus && <ConsensusMeter consensus={market.consensus} />}
-
-              {market.consensus?.votes.length ? (
-                <div className="space-y-3">
-                  {market.consensus.votes.map((v) => {
-                    const agent = agentById(v.agentId);
-                    const agentName = agent?.name ?? v.callsign;
-                    const agentModel = agent?.modelHint ?? "GPT";
-                    return (
-                      <div
-                        key={v.agentId}
-                        className="rounded-2xl border-2 border-ink bg-raised p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex size-10 items-center justify-center rounded-xl border-2 border-ink bg-card">
-                              <ShieldCheck className="size-5 text-ink" strokeWidth={2.5} />
-                            </div>
-                            <div>
-                              <p className="font-display text-sm font-black uppercase tracking-tight text-ink">
-                                {agentName}
-                              </p>
-                              <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
-                                {v.callsign} · {agentModel}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4 text-right">
-                            <div>
-                              <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
-                                vote
-                              </p>
-                              <p
-                                className="font-display text-base font-black"
-                                style={{ color: v.vote === "YES" ? "#00B14F" : "#FF2D6F" }}
-                              >
-                                {v.vote}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
-                                conf
-                              </p>
-                              <p className="font-score text-sm font-bold text-ink">
-                                {formatPct(v.confidence)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          {v.evidence.map((e, i) => (
-                            <div
-                              key={i}
-                              className="flex items-start gap-2 rounded-xl border-2 border-ink bg-card px-3 py-2"
-                            >
-                              <Globe2 className="mt-0.5 size-3.5 text-cyan-700" strokeWidth={2.5} />
-                              <div className="min-w-0 flex-1">
-                                <p className="font-score text-[10px] font-bold uppercase tracking-wider text-cyan-700">
-                                  {e.kind} · {e.source}
-                                </p>
-                                <p className="mt-0.5 truncate text-sm font-medium text-ink/80">
-                                  &ldquo;{e.snippet}&rdquo;
-                                </p>
-                              </div>
-                              <a href={e.url} className="text-muted hover:text-ink" aria-label="Open source">
-                                <ExternalLink className="size-3.5" />
-                              </a>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-2xl border-2 border-dashed border-ink/30 bg-raised p-8 text-center">
-                  <p className="font-score text-xs font-bold uppercase tracking-wider text-muted">
-                    Oracles begin deliberation when the market expires.
-                  </p>
-                  <p className="font-score mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">
-                    expires {formatRelative(market.expiresAt)}
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
+          {/* Consensus + Agent votes (interactive: force resolve, staged reveal, x402) */}
+          <OracleDeliberation market={market} agents={agents} />
 
           {/* Resolution criteria */}
           <section className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">

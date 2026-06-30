@@ -98,7 +98,7 @@ export function TradePanel({ market }: { market: Market }) {
             placeholder="0"
             disabled={market.status !== "live"}
           />
-          <span className="font-score text-sm font-bold text-muted">USDC</span>
+          <span className="font-score text-sm font-bold text-muted">USDD</span>
         </div>
 
         <div className="mt-3 flex gap-1.5">
