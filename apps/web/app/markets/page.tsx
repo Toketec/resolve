@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { MarketCard } from "@/components/market-card";
 import { CATEGORIES, MOCK_MARKETS } from "@/lib/mock";
+import { fetchMarkets } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import type { MarketStatus } from "@/lib/types";
+import type { Market, MarketStatus } from "@/lib/types";
 
 type SortKey = "volume" | "trending" | "ending" | "new";
 const SORTS: { id: SortKey; label: string }[] = [
@@ -26,9 +27,25 @@ export default function MarketsPage() {
   const [status, setStatus] = useState<MarketStatus | "all">("all");
   const [sort, setSort] = useState<SortKey>("volume");
   const [q, setQ] = useState("");
+  // 从 API 读取市场；失败回退 mock（视觉不变）
+  const [markets, setMarkets] = useState<Market[]>(MOCK_MARKETS);
+
+  useEffect(() => {
+    let active = true;
+    fetchMarkets()
+      .then((m) => {
+        if (active && Array.isArray(m) && m.length) setMarkets(m);
+      })
+      .catch(() => {
+        /* 保持 mock 兜底 */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const items = useMemo(() => {
-    let m = MOCK_MARKETS.slice();
+    let m = markets.slice();
     if (cat !== "all") m = m.filter((x) => x.category === cat);
     if (status !== "all") m = m.filter((x) => x.status === status);
     if (q.trim()) {
@@ -42,7 +59,7 @@ export default function MarketsPage() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     return m;
-  }, [cat, status, sort, q]);
+  }, [markets, cat, status, sort, q]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">

@@ -7,7 +7,9 @@ import { ConsensusMeter } from "@/components/consensus-meter";
 import { TradePanel } from "@/components/trade-panel";
 import { PriceChart } from "@/components/price-chart";
 import { agentById, marketBySlug, MOCK_TRADES } from "@/lib/mock";
+import { fetchMarket } from "@/lib/api-client";
 import { formatPct, formatRelative, formatUSD, shortAddr } from "@/lib/utils";
+import type { Market } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -15,7 +17,13 @@ interface PageProps {
 
 export default async function MarketDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const market = marketBySlug(slug);
+  // 从 API 读取市场；失败回退 mock（视觉不变）
+  let market: Market | undefined;
+  try {
+    market = await fetchMarket(slug);
+  } catch {
+    market = marketBySlug(slug);
+  }
   if (!market) notFound();
 
   const trades = MOCK_TRADES.filter((t) => t.marketId === market.id).slice(0, 8);
@@ -79,6 +87,8 @@ export default async function MarketDetailPage({ params }: PageProps) {
                 <div className="space-y-3">
                   {market.consensus.votes.map((v) => {
                     const agent = agentById(v.agentId);
+                    const agentName = agent?.name ?? v.callsign;
+                    const agentModel = agent?.modelHint ?? "GPT";
                     return (
                       <div
                         key={v.agentId}
@@ -91,10 +101,10 @@ export default async function MarketDetailPage({ params }: PageProps) {
                             </div>
                             <div>
                               <p className="font-display text-sm font-black uppercase tracking-tight text-ink">
-                                {agent?.name}
+                                {agentName}
                               </p>
                               <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
-                                {v.callsign} · {agent?.modelHint}
+                                {v.callsign} · {agentModel}
                               </p>
                             </div>
                           </div>
