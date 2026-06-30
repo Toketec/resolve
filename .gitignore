@@ -17,3 +17,6 @@ npm-debug.log*
 Thumbs.db
 .pnpm-store/
 tsconfig.tsbuildinfo
+
+# Local credentials (testnet keys, never commit)
+资料/凭据/

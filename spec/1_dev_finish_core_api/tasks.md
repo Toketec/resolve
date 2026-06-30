@@ -12,16 +12,16 @@
 
 | ID | 任务 | 状态 | 工时 | 备注 |
 |:--:|------|:----:|:----:|------|
-| 1.1 | 创建 `lib/supabase-server.ts` — 服务端 Supabase 客户端 | ☐ | 10min | 用 `createClient(url, key)` |
-| 1.2 | 创建 `app/api/markets/route.ts` + `[slug]/route.ts` — 从 Supabase 读取 | ☐ | 20min | |
-| 1.3 | 创建 `app/api/agents/route.ts` + `[id]/route.ts` — 从 Supabase 读取 | ☐ | 15min | |
-| 1.4 | 创建 `app/api/price/[symbol]/route.ts` — 代理 HTX 公开 API（价格） | ☐ | 15min | 无需注册 |
-| 1.5 | 创建 `app/api/price/[symbol]/depth/route.ts` — 代理 HTX（订单簿深度） | ☐ | 15min | 加分项 |
-| 1.6 | 创建 `app/api/price/[symbol]/kline/route.ts` — 代理 HTX（K 线数据） | ☐ | 15min | 加分项 |
-| 1.7 | 创建 `app/api/buy/route.ts` — 写入 Supabase positions + mock txHash | ☐ | 20min | 数据真，链上签名 mock |
-| 1.8 | 创建 `app/api/markets/[slug]/resolve/route.ts` — mock AIConsensus | ☐ | 15min | 等 spec 3 替换 |
-| 1.9 | 创建 `app/api/settle/route.ts` — mock txHash | ☐ | 10min | 等 spec 4 替换 |
-| 1.10 | 验证: `pnpm typecheck` + `pnpm build` + curl 所有路由 | ☐ | 20min | |
+| 1.1 | 创建 `lib/supabase-server.ts` — 服务端 Supabase 客户端 | ☑ | 10min | 经 @resolve/db 接入；未配置→null 触发 mock 兜底 |
+| 1.2 | 创建 `app/api/markets/route.ts` + `[slug]/route.ts` — 从 Supabase 读取 | ☑ | 20min | + `lib/mappers.ts` 做行↔shared 映射；slug 容错 eoy→2026 |
+| 1.3 | 创建 `app/api/agents/route.ts` + `[id]/route.ts` — 从 Supabase 读取 | ☑ | 15min | 6 个全 ACTIVE；ApiAgent 超集带 role/tier/powered_by/8004 |
+| 1.4 | 创建 `app/api/price/[symbol]/route.ts` — 代理 HTX 公开 API（价格） | ☑ | 15min | + `lib/htx.ts`；本环境无法直连 HTX→合成兜底(source:fallback) |
+| 1.5 | 创建 `app/api/price/[symbol]/depth/route.ts` — 代理 HTX（订单簿深度） | ☑ | 15min | 同上，20 档兜底 |
+| 1.6 | 创建 `app/api/price/[symbol]/kline/route.ts` — 代理 HTX（K 线数据） | ☑ | 15min | 30 根日线，时间升序 |
+| 1.7 | 创建 `app/api/buy/route.ts` — 写入 Supabase positions + mock txHash | ☑ | 20min | 输入校验；未配置 DB→返回 Position 不持久化 |
+| 1.8 | 创建 `app/api/markets/[slug]/resolve/route.ts` — mock AIConsensus | ☑ | 15min | 6 票加权 0.744→consensus；等 spec 3 替换真实推理 |
+| 1.9 | 创建 `app/api/settle/route.ts` — mock txHash | ☑ | 10min | 气囊 simulated:true；等 spec 4 替换 |
+| 1.10 | 验证: `pnpm typecheck` + `pnpm build` + curl 所有路由 | ☑ | 20min | typecheck/build 全绿；10 路由 curl 通过 |
 
 ## 验证清单
 

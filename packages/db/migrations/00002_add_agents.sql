@@ -38,13 +38,13 @@ CREATE TRIGGER trg_agents_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================================
--- 种子数据：6 个 Agent（3 ACTIVE + 3 STANDBY）
+-- 种子数据：6 个 Agent（全部 ACTIVE — 无 STANDBY 层）
 -- =============================================================
 INSERT INTO agents (agent_id, name, role, role_label, tier, description, provider, powered_by, sort_order) VALUES
-  ('bull-1',  'BULL-1',  'exchange-oracle',  'Exchange Oracle',  'active',  'Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data.',  'claude', 'Claude + HTX', 1),
-  ('bear-1',  'BEAR-1',  'media-oracle',     'Media Oracle',     'active',  'Fundamental analysis agent focusing on news sentiment, regulatory developments, and macro risks. Uses curated evidence set for balanced assessment.',  'claude', 'Claude', 2),
-  ('neut-1',  'NEUT-1',  'onchain-oracle',   'Onchain Oracle',   'active',  'Data-driven neutral analysis agent examining on-chain holdings, whale movements, and exchange net flows for impartial assessment.',  'claude', 'Claude', 3),
-  ('bull-2',  'BULL-2',  'tech-oracle',      'Tech Oracle',      'standby', 'Standby bullish agent. Displayed in the Agent Pool for scale demonstration. No active inference in current demo.',  'mock',   'Standby', 4),
-  ('bear-2',  'BEAR-2',  'regulation-oracle','Regulation Oracle', 'standby', 'Standby bearish agent. Displayed in the Agent Pool for scale demonstration. No active inference in current demo.',  'mock',   'Standby', 5),
-  ('neut-2',  'NEUT-2',  'macro-oracle',     'Macro Oracle',     'standby', 'Standby neutral agent. Displayed in the Agent Pool for scale demonstration. No active inference in current demo.',  'mock',   'Standby', 6)
+  ('bull-1',  'BULL-1',  'exchange-oracle',  'Exchange Oracle',  'active',  'Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data.',  'openai', 'GPT + HTX', 1),
+  ('bull-2',  'BULL-2',  'tech-oracle',      'Tech Oracle',      'active',  'Fundamentals agent tracking TEE/L2 adoption, network throughput, and developer activity for a technology-driven bullish read.',  'openai', 'GPT', 2),
+  ('bear-1',  'BEAR-1',  'media-oracle',     'Media Oracle',     'active',  'Fundamental analysis agent focusing on news sentiment, regulatory developments, and macro risks. Uses curated evidence set for balanced assessment.',  'openai', 'GPT', 3),
+  ('bear-2',  'BEAR-2',  'regulation-oracle','Regulation Oracle', 'active',  'Global regulatory agent monitoring SEC, MiCA, and cross-border policy for downside risk to the thesis.',  'openai', 'GPT', 4),
+  ('neut-1',  'NEUT-1',  'onchain-oracle',   'Onchain Oracle',   'active',  'Data-driven neutral analysis agent examining on-chain holdings, whale movements, and exchange net flows for impartial assessment.',  'openai', 'GPT', 5),
+  ('neut-2',  'NEUT-2',  'macro-oracle',     'Macro Oracle',     'active',  'Macro agent weighing rates, liquidity, and geopolitics for a probabilistic neutral stance.',  'openai', 'GPT', 6)
 ON CONFLICT (agent_id) DO NOTHING;
