@@ -8,6 +8,13 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc"
   },
-  "dependencies": { "@resolve/shared": "workspace:*" },
-  "devDependencies": { "typescript": "^5.5.0" }
+  "dependencies": {
+    "@resolve/shared": "workspace:*",
+    "openai": "^6.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.22.4",
+    "typescript": "^5.5.0"
+  }
 }
