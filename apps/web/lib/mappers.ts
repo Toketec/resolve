@@ -128,6 +128,15 @@ const KIND_FROM_ROLE: Record<string, Agent["kind"]> = {
   "macro-oracle": "onchain-oracle",
 };
 
+// B.AI 8004 链上身份 ID（确定性派生，供 UI 展示 + Tronscan 链接）
+// 真实集成时替换为 B.AI 8004 注册返回的链上 agent id。
+export function derive8004Id(agentId: string): string {
+  const seed = hashString(agentId);
+  const reg = 8004;
+  const idx = (seed % 900) + 100; // 100–999
+  return `8004:${reg}-${idx}`;
+}
+
 export function agentRowToAgent(row: AgentRow): ApiAgent {
   const seed = hashString(row.agent_id);
   return {
@@ -147,7 +156,7 @@ export function agentRowToAgent(row: AgentRow): ApiAgent {
     roleLabel: row.role_label,
     tier: row.tier,
     poweredBy: row.powered_by ?? "GPT",
-    ba8004Id: row.ba_8004_id,
+    ba8004Id: row.ba_8004_id ?? derive8004Id(row.agent_id),
   };
 }
 
@@ -197,7 +206,7 @@ function agentFallback(
     roleLabel,
     tier: "active",
     poweredBy,
-    ba8004Id: null,
+    ba8004Id: derive8004Id(agentId),
   };
 }
 
