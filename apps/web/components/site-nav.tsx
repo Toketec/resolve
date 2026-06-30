@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { LanguageSelector } from "./language-selector";
+import { WalletButton } from "./wallet-button";
 import { useT } from "./i18n-provider";
 
 export function SiteNav() {
@@ -44,12 +45,7 @@ export function SiteNav() {
 
         <div className="ml-auto flex items-center gap-2">
           <LanguageSelector />
-          <button
-            type="button"
-            className="hidden items-center gap-2 rounded-full border-2 border-ink bg-pitch-500 px-4 py-2 text-sm font-bold uppercase tracking-[0.06em] text-ink shadow-stamp-sm transition hover:-translate-y-0.5 hover:shadow-stamp sm:inline-flex"
-          >
-            {t("nav.connectWallet")}
-          </button>
+          <WalletButton />
         </div>
       </div>
     </header>

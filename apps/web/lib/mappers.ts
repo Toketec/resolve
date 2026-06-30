@@ -9,7 +9,7 @@
 
 import type { Market, Agent, MarketStatus, Outcome, PricePoint } from "@/lib/types";
 import type { MarketRow, AgentRow } from "@resolve/db";
-import { MOCK_MARKETS, MOCK_AGENTS } from "@/lib/mock";
+import { MOCK_MARKETS } from "@/lib/mock";
 
 // ── status 枚举映射 ───────────────────────────────────────────
 // DB: 'active' | 'resolving' | 'resolved' | 'settled'

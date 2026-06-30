@@ -18,7 +18,7 @@ export async function GET(
       `/market/history/kline?symbol=${htxSymbol}&period=${PERIOD}&size=${SIZE}`,
     );
     const klines = (data?.data ?? [])
-      .map((k: any) => ({
+      .map((k) => ({
         timestamp: k.id,
         open: k.open,
         close: k.close,

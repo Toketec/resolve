@@ -7,6 +7,30 @@
 
 const HTX_HOSTS = ["https://api.htx.com", "https://api.huobi.pro"];
 
+// HTX 公开行情响应的最小形状
+export interface HtxTick {
+  open?: number;
+  close?: number;
+  high?: number;
+  low?: number;
+  vol?: number;
+  bids?: [number, number][];
+  asks?: [number, number][];
+}
+export interface HtxKlinePoint {
+  id: number;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  vol: number;
+}
+export interface HtxResponse {
+  status?: string;
+  tick?: HtxTick;
+  data?: HtxKlinePoint[];
+}
+
 /** BTC → btcusdt；已是完整对（含 usdd/usdt）则原样小写。 */
 export function toHtxSymbol(input: string): string {
   const s = input.trim().toLowerCase();
@@ -15,7 +39,7 @@ export function toHtxSymbol(input: string): string {
 }
 
 /** 依次尝试 HTX 主机，超时 6s。全部失败抛错（调用方走兜底）。 */
-export async function htxFetch(path: string): Promise<any> {
+export async function htxFetch(path: string): Promise<HtxResponse> {
   let lastErr: unknown;
   for (const host of HTX_HOSTS) {
     try {
@@ -25,7 +49,7 @@ export async function htxFetch(path: string): Promise<any> {
         next: { revalidate: 5 },
       });
       if (!res.ok) throw new Error(`HTX ${path} → HTTP ${res.status}`);
-      const json = await res.json();
+      const json = (await res.json()) as HtxResponse;
       if (json?.status && json.status !== "ok") {
         throw new Error(`HTX ${path} → status ${json.status}`);
       }
