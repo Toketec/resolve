@@ -54,20 +54,20 @@ CREATE TRIGGER trg_agents_updated_at
 INSERT INTO agents (agent_id, callsign, name, role, role_label, stance, tier, weight, description, model_hint, provider, region, powered_by, uptime_pct, resolutions, accuracy_pct, avg_confidence, sort_order) VALUES
   ('bull-1',  'BULL-1',  'Exchange Oracle',  'exchange-oracle',  'Exchange Oracle',  'BULL',  'active',  1.0,
     'Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data.',
-    'Claude 4.7 · B.AI',  'openai',  'ap-south-1',      'GPT + HTX', 0.9994, 4181, 0.987, 0.94, 1),
+    'Claude 4.7 · B.AI',  'openai',  'ap-south-1',      'Claude 4.7 · B.AI', 0.9994, 4181, 0.987, 0.94, 1),
   ('bull-2',  'BULL-2',  'Tech Oracle',      'tech-oracle',      'Tech Oracle',      'BULL',  'active',  0.8,
     'Fundamentals agent tracking TEE/L2 adoption, network throughput, and developer activity for a technology-driven bullish read. Supplements BULL-1 with infrastructure-level signals.',
-    'Claude 4.7',          'openai',  'eu-west-2',        'GPT',       0.9981, 3240, 0.964, 0.89, 2),
+    'Claude 4.7',          'openai',  'eu-west-2',        'Claude 4.7 · B.AI',       0.9981, 3240, 0.964, 0.89, 2),
   ('bear-1',  'BEAR-1',  'Media Oracle',     'media-oracle',     'Media Oracle',     'BEAR',  'active',  0.8,
     'Fundamental analysis agent focusing on news sentiment, regulatory developments, and macro risks. Uses a curated evidence set of global news wires and verified social media for balanced assessment.',
-    'Claude 4.7 · GPT-5',  'openai',  'us-east-1',        'GPT',       0.9999, 3722, 0.961, 0.88, 3),
+    'Claude 4.7 · GPT-5',  'openai',  'us-east-1',        'Claude 4.7 · B.AI',       0.9999, 3722, 0.961, 0.88, 3),
   ('bear-2',  'BEAR-2',  'Regulation Oracle','regulation-oracle','Regulation Oracle','BEAR',  'active',  0.8,
     'Global regulatory agent monitoring SEC, MiCA, and cross-border policy for downside risk to the thesis. Specializes in legal and compliance threat detection.',
-    'Claude 4.7 · GPT-5',  'openai',  'eu-central-1',     'GPT',       0.9978, 2890, 0.974, 0.91, 4),
+    'Claude 4.7 · GPT-5',  'openai',  'eu-central-1',     'Claude 4.7 · B.AI',       0.9978, 2890, 0.974, 0.91, 4),
   ('neut-1',  'NEUT-1',  'Onchain Oracle',   'onchain-oracle',  'Onchain Oracle',   'NEUT',  'active',  0.9,
     'Data-driven neutral analysis agent examining on-chain holdings, whale movements, and exchange net flows for impartial assessment. No bullish or bearish bias — follows the data.',
-    'Claude Haiku · B.AI',  'openai',  'us-west-2',       'GPT',       0.9967, 6204, 0.994, 0.97, 5),
+    'Claude Haiku · B.AI',  'openai',  'us-west-2',       'Claude 4.7 · B.AI',       0.9967, 6204, 0.994, 0.97, 5),
   ('neut-2',  'NEUT-2',  'Macro Oracle',     'macro-oracle',     'Macro Oracle',     'NEUT',  'active',  0.9,
     'Macro agent weighing interest rates, global liquidity, and geopolitical events for a probabilistic neutral stance. Integrates economic indicators without market bias.',
-    'Claude 4.7 · GPT-5',  'openai',  'ap-northeast-1',   'GPT',       0.9991, 2114, 0.981, 0.93, 6)
+    'Claude 4.7 · GPT-5',  'openai',  'ap-northeast-1',   'Claude 4.7 · B.AI',       0.9991, 2114, 0.981, 0.93, 6)
 ON CONFLICT (agent_id) DO NOTHING;
