@@ -3,15 +3,18 @@
 ## 架构
 
 ```
-packages/shared/src/agents.ts  ←── 唯一编辑点
-  ├── apps/web/lib/mock/agents.ts    ← import AGENT_META 派生 MOCK_AGENTS
-  ├── apps/web/lib/mappers.ts        ← import AGENT_META 派生 FALLBACK_AGENTS
-  └── packages/db/scripts/seed-agents.ts  ← upsert 至 Supabase agents 表
+packages/db/migrations/00002_add_agents.sql  ←── 唯一编辑点 (规范数据)
+                       │
+                       ▼
+packages/shared/src/agents.ts          ←── 兜底镜像 (mirror SQL 数据)
+  ├── apps/web/lib/mock/agents.ts     ──→ import AGENT_META 派生 MOCK_AGENTS
+  ├── apps/web/lib/mappers.ts         ──→ import AGENT_META 派生 FALLBACK_AGENTS
+  └── packages/db/scripts/seed-agents.ts  ←── import AGENT_META → upsert 至 Supabase
 ```
 
 ## Agent 规范数据
 
-6 个 Agent 的设计已确定，数据来源：whitepaper (tier/role/weight)、judge-qa (model)、dev-execution-spec (role taxonomy)。直接写入 `agents.ts`：
+6 个 Agent 的设计已确定，数据来源：whitepaper (tier/role/weight)、judge-qa (model)、dev-execution-spec (role taxonomy)。写入 SQL migration + 镜像到 `agents.ts`：
 
 | ID | callsign | name | role | roleLabel | stance | weight | modelHint |
 |:--:|:--------:|:----:|:----:|:---------:|:-----:|:------:|-----------|
