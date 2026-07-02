@@ -1,62 +1,46 @@
-# Spec 10: Agent 配置同步机制 — 统一 5 份分散的 Agent 定义
+# Spec 10: Agent 配置同步机制
 
-## 解决什么问题
+## 问题
 
-当前 6 个 Agent 的定义分布在 **5 份不同的拷贝**中，且已经出现信息飘移：
+6 个 Agent 的定义散落在 5 份拷贝中，已出现信息不对齐：
 
 ```
-packages/ai/src/prompts.ts           ← AI 层 — 6 个 AGENT_PROFILES（含完整 system prompt）
+packages/ai/src/prompts.ts           ← AI 层 — AGENT_PROFILES
 apps/web/lib/mock/agents.ts          ← UI 层 — MOCK_AGENTS
-apps/web/lib/mappers.ts              ← API 层 — FALLBACK_AGENTS + agentRowToAgent
-packages/db/migrations/00002_add_agents.sql  ← DB 层 — SQL INSERT（从未执行）
+apps/web/lib/mappers.ts              ← API 层 — FALLBACK_AGENTS
+packages/db/migrations/00002_add_agents.sql  ← DB 层 — SQL INSERT
 packages/shared/src/index.ts         ← 类型层 — 只有接口无实例
 ```
 
-**已发现的漂移**（对比 docs/ 中的规范设计）：
-- **modelHint 全错**：mock 写 "Claude 4.7 · GPT-5"，权威 docs 说 "Claude Sonnet 4"
-- **description 不一致**：bull-2 mock 多了 "Supplements BULL-1…"，bear-1 混入 "macro risks"（应属 NEUT-2），mappers/SQL 缺词
-- **统计字段**：mock 精确定义 6 组值，mappers 用 hash 派生不匹配
-- **KIND_FROM_ROLE 映射**：未明确设计意图
+修改一个 Agent 的名字/描述/模型配置需要改 5 处，已发生实际漂移。
 
-**设计方案**：
-1. 以 docs/（whitepaper + judge-qa + dev-execution-spec）中的 Agent 设计为**规范**
-2. 创建 `@resolve/shared/agents.ts` 作为**唯一编辑点**，存放 6 个 Agent 的规范配置
-3. mock/agents.ts、mappers.ts 从规范配置派生
-4. 创建 DB seeding 脚本推送至 Supabase agents 表
+## 方案
 
-## 规范配置来源
-
-| 字段 | 来源 |
-|------|------|
-| 名字、role、roleLabel、立场、权重 | `docs/whitepaper.md` §4.2 Agent Taxonomy |
-| 分析视角（description） | 同上 analytical lens 列 |
-| 模型分配 | `docs/ENG/judge-qa.md` 模型分配表 |
-| 统计字段（uptime/resolutions 等） | 沿用当前 mock/agents.ts 的精确值 |
-| 架构设计 | `docs/ENG/architecture-overview.md` §2.3 |
-| role 设计 | `docs/ENG/dev-execution-spec.md` Agent 池表格 |
-
-详见 `spec/10_agent_config_sync/canonical-design.md`
-
-## 依赖项
-
-- `packages/shared/` — 新建 `packages/shared/src/agents.ts`
-- `packages/db/src/data.ts` — 已有 `listAgents()` / `getAgentById()`（保留）
-- `packages/db/migrations/00002_add_agents.sql` — 保留不动
-- `apps/web/lib/mock/agents.ts` — 改为引用规范配置
-- `apps/web/lib/mappers.ts` — `FALLBACK_AGENTS` 改为引用规范配置
-
-## 边界说明
-
-- **不做**：修改 prompts.ts 中 AGENT_PROFILES 的 system prompt 内容
-- **不做**：修改 agent 权重和投票逻辑
-- **不做**：新的 UI 页面或视觉改动
-- **不做**：修改 SQL migration 文件
-- **不做**：prompts.ts 的 identity 描述与 UI description 强制统一（AI prompt 可以更详细）
-
-## 工作流
+在 `@resolve/shared` 中创建 **`agents.ts`**，作为 6 个 Agent 规范配置的唯一编辑点。
 
 ```
-开发者修改 @resolve/shared/agents.ts  ←── 唯一编辑点
-  → mock/agents.ts、mappers.ts 自动同步（编译时）
-  → pnpm seed:agents 推送至 Supabase（运行时）
+@resolve/shared/agents.ts  ←── 唯一编辑点
+  ├── mock/agents.ts       ──→ import 派生（不再硬编码）
+  ├── mappers.ts           ──→ import 派生（不再硬编码）
+  └── DB seeding 脚本      ──→ pnpm seed:agents 推送至 Supabase
 ```
+
+工作流：改 Agent 名字/描述/模型 → 只改 `agents.ts` → 其他层自动同步。
+
+## 执行步骤
+
+| # | 任务 | 文件 |
+|:-:|------|------|
+| 1 | 新建 `AgentMeta` 类型 + `AGENT_META` 常量（6 Agent 规范配置） | `packages/shared/src/agents.ts` |
+| 2 | 导出 `AgentMeta`、`AGENT_META`、`KIND_FROM_ROLE` | `packages/shared/src/index.ts` |
+| 3 | 替换 `mock/agents.ts` 为从 `AGENT_META` 派生 | `apps/web/lib/mock/agents.ts` |
+| 4 | 替换 `FALLBACK_AGENTS` 为从 `AGENT_META` 派生，删除 `agentFallback()` | `apps/web/lib/mappers.ts` |
+| 5 | 创建 DB seeding 脚本 + `package.json` script | `packages/db/scripts/seed-agents.ts` |
+| 6 | `pnpm typecheck && pnpm build` 验证 | — |
+
+## 不涉及的
+
+- AI 层 `prompts.ts` 的 system prompt（保留不动）
+- DB migration 文件（保留不动）
+- API 路由逻辑（FALLBACK_AGENTS 自动更新后即生效）
+- `packages/db/src/data.ts`/`types.ts` 的 `AgentRow`（API 路由还在用）

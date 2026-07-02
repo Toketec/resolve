@@ -1,80 +1,34 @@
 # Spec 10: 执行计划
 
-## 核心架构
+## 架构
 
 ```
-旧 (5 份拷贝各自维护)                 新 (单源真理 + DB 持久化)
-────────────────────                  ────────────────────────────
-prompts.ts (AI 人设) ──→ 不动          prompts.ts ──→ 保留完整 system prompt
-mock/agents.ts ────────→ 冗余拷贝      mock/agents.ts ──→ import AGENT_META 派生
-mappers.ts ────────────→ 冗余拷贝      mappers.ts ──→ import AGENT_META 派生
-SQL migration ─────────→ 过期不执行    SQL migration ──→ 保留不动
-                                      @resolve/shared/agents.ts ←── 唯一编辑点
-                                      packages/db/scripts/seed-agents.ts → DB
+packages/shared/src/agents.ts  ←── 唯一编辑点
+  ├── apps/web/lib/mock/agents.ts    ← import AGENT_META 派生 MOCK_AGENTS
+  ├── apps/web/lib/mappers.ts        ← import AGENT_META 派生 FALLBACK_AGENTS
+  └── packages/db/scripts/seed-agents.ts  ← upsert 至 Supabase agents 表
 ```
 
-## 规范配置完整数据
+## Agent 规范数据
 
-以下 6 个 Agent 的规范数据来自 `spec/10_agent_config_sync/canonical-design.md`（引用自 docs/）：
+6 个 Agent 的设计已确定，数据来源：whitepaper (tier/role/weight)、judge-qa (model)、dev-execution-spec (role taxonomy)。直接写入 `agents.ts`：
 
-### 核心标识 + 模型
-
-| Agent ID | Callsign | Name | Role | Stance | Weight | modelHint | sortOrder |
-|:--------:|:--------:|:----:|:----:|:-----:|:------:|-----------|:---------:|
-| bull-1 | BULL-1 | Exchange Oracle | exchange-oracle | BULL | 1.0 | Claude Sonnet 4 | 1 |
-| bull-2 | BULL-2 | Tech Oracle | tech-oracle | BULL | 0.8 | Claude Sonnet 4 | 2 |
-| bear-1 | BEAR-1 | Media Oracle | media-oracle | BEAR | 0.8 | Claude Sonnet 4 | 3 |
-| bear-2 | BEAR-2 | Regulation Oracle | regulation-oracle | BEAR | 0.8 | Claude Sonnet 4 | 4 |
-| neut-1 | NEUT-1 | Onchain Oracle | onchain-oracle | NEUT | 0.9 | B.AI（主推） | 5 |
-| neut-2 | NEUT-2 | Macro Oracle | macro-oracle | NEUT | 0.9 | Claude Sonnet 4 | 6 |
-
-### Canonical Description（UI 展示用，来自 whitepaper analytical lens）
-
-```
-bull-1: "Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data."
-bull-2: "Fundamentals agent tracking TEE adoption, L2 scaling, blockchain fundamentals, and protocol upgrades for a technology-driven bullish read."
-bear-1: "Fundamental analysis agent focusing on news sentiment, regulatory announcements, and social media signals for FUD detection and balanced assessment."
-bear-2: "Global regulatory agent monitoring SEC, EU MiCA, and cross-border policy for downside risk assessment and compliance threat detection."
-neut-1: "Data-driven neutral analysis agent examining on-chain metrics, whale positions, exchange flows, and DeFi TVL for impartial assessment."
-neut-2: "Macro agent weighing interest rates, GDP forecasts, geopolitical risk, and global liquidity for a probabilistic neutral stance."
-```
-
-### 统计字段（保持 mock/agents.ts 现有精确值不变）
-
-| Agent | uptimePct | resolutions | accuracyPct | avgConfidence | region |
-|:-----:|:---------:|:-----------:|:-----------:|:-------------:|:------:|
-| bull-1 | 0.9994 | 4181 | 0.987 | 0.94 | ap-south-1 |
-| bull-2 | 0.9981 | 3240 | 0.964 | 0.89 | eu-west-2 |
-| bear-1 | 0.9999 | 3722 | 0.961 | 0.88 | us-east-1 |
-| bear-2 | 0.9978 | 2890 | 0.974 | 0.91 | eu-central-1 |
-| neut-1 | 0.9967 | 6204 | 0.994 | 0.97 | us-west-2 |
-| neut-2 | 0.9991 | 2114 | 0.981 | 0.93 | ap-northeast-1 |
-
-### KIND_FROM_ROLE 映射（明确设计意图）
-
-```
-exchange-oracle  → "exchange-oracle"  图标 (BULL-1)
-tech-oracle      → "exchange-oracle"  图标 (BULL-2, 同族共用, 看多阵营)
-media-oracle     → "media-oracle"     图标 (BEAR-1)
-regulation-oracle → "media-oracle"    图标 (BEAR-2, 同族共用, 看空阵营)
-onchain-oracle   → "onchain-oracle"   图标 (NEUT-1)
-macro-oracle     → "onchain-oracle"   图标 (NEUT-2, 同族共用, 中性阵营)
-```
+| ID | callsign | name | role | roleLabel | stance | weight | modelHint |
+|:--:|:--------:|:----:|:----:|:---------:|:-----:|:------:|-----------|
+| bull-1 | BULL-1 | Exchange Oracle | exchange-oracle | Exchange Oracle | BULL | 1.0 | Claude Sonnet 4 |
+| bull-2 | BULL-2 | Tech Oracle | tech-oracle | Tech Oracle | BULL | 0.8 | Claude Sonnet 4 |
+| bear-1 | BEAR-1 | Media Oracle | media-oracle | Media Oracle | BEAR | 0.8 | Claude Sonnet 4 |
+| bear-2 | BEAR-2 | Regulation Oracle | regulation-oracle | Regulation Oracle | BEAR | 0.8 | Claude Sonnet 4 |
+| neut-1 | NEUT-1 | Onchain Oracle | onchain-oracle | Onchain Oracle | NEUT | 0.9 | B.AI（主推） |
+| neut-2 | NEUT-2 | Macro Oracle | macro-oracle | Macro Oracle | NEUT | 0.9 | Claude Sonnet 4 |
 
 ## 步骤
 
-### Step 0: 确认 canonical design 已定稿 ✅
+### Step 1: `packages/shared/src/agents.ts`
 
-`spec/10_agent_config_sync/canonical-design.md` 已创建。
-
-### Step 1: 创建 `packages/shared/src/agents.ts`
-
-定义 `AgentMeta` 类型 + `AGENT_META` 常量数组。包含 6 个 Agent 的所有规范字段。
+定义 `AgentMeta` 类型 + `AGENT_META` 常量数组：
 
 ```typescript
-// packages/shared/src/agents.ts
-import type { Agent, AgentKind } from "./index";
-
 export interface AgentMeta {
   id: string;
   callsign: string;
@@ -88,7 +42,7 @@ export interface AgentMeta {
   modelHint: string;
   weight: number;
   sortOrder: number;
-  // 统计字段（保持现有精确值）
+  // 展示用统计字段
   uptimePct: number;
   resolutions: number;
   accuracyPct: number;
@@ -97,51 +51,31 @@ export interface AgentMeta {
 }
 
 export const AGENT_META: AgentMeta[] = [
-  {
-    id: "bull-1",
-    callsign: "BULL-1",
-    name: "Exchange Oracle",
-    role: "exchange-oracle",
-    roleLabel: "Exchange Oracle",
-    tier: "active",
-    stance: "BULL",
-    description: "Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data.",
-    provider: "claude",
-    modelHint: "Claude Sonnet 4",
-    weight: 1.0,
-    sortOrder: 1,
-    uptimePct: 0.9994,
-    resolutions: 4181,
-    accuracyPct: 0.987,
-    avgConfidence: 0.94,
-    region: "ap-south-1",
-  },
-  // ... 5 more with actual data from canonical table
+  // 6 个 Agent 的完整数据
 ];
 
-// 明确设计意图：同stance阵营共用图标
+// 同阵营共用图标
 export const KIND_FROM_ROLE: Record<string, AgentKind> = {
-  "exchange-oracle": "exchange-oracle",   // BULL-1
-  "tech-oracle":     "exchange-oracle",   // BULL-2 (BULL family share icon)
-  "media-oracle":    "media-oracle",      // BEAR-1
-  "regulation-oracle": "media-oracle",   // BEAR-2 (BEAR family share icon)
-  "onchain-oracle":  "onchain-oracle",   // NEUT-1
-  "macro-oracle":    "onchain-oracle",   // NEUT-2 (NEUT family share icon)
+  "exchange-oracle": "exchange-oracle",
+  "tech-oracle": "exchange-oracle",
+  "media-oracle": "media-oracle",
+  "regulation-oracle": "media-oracle",
+  "onchain-oracle": "onchain-oracle",
+  "macro-oracle": "onchain-oracle",
 };
 ```
 
-### Step 2: 导出 `AgentMeta` 和 `AGENT_META`
+### Step 2: `packages/shared/src/index.ts`
 
-`packages/shared/src/index.ts` 末尾追加：
+末尾追加导出：
 ```typescript
 export type { AgentMeta } from "./agents";
 export { AGENT_META, KIND_FROM_ROLE } from "./agents";
 ```
 
-### Step 3: 替换 `mock/agents.ts`
+### Step 3: `apps/web/lib/mock/agents.ts`
 
-整个替换为从 `AGENT_META` 派生：
-
+整体替换为：
 ```typescript
 import { AGENT_META, KIND_FROM_ROLE } from "@resolve/shared";
 import type { Agent } from "@/lib/types";
@@ -168,15 +102,13 @@ export function agentById(id: string) {
 }
 ```
 
-### Step 4: 替换 `mappers.ts` 中的 `FALLBACK_AGENTS`
+### Step 4: `apps/web/lib/mappers.ts`
 
-将 `FALLBACK_AGENTS` 数组 + `agentFallback()` 函数替换为一个从 `AGENT_META` 派生的 `agentMetaToApiAgent()` 函数：
-
+替换 `FALLBACK_AGENTS` 数组和 `agentFallback()` 函数：
 ```typescript
 import { AGENT_META, KIND_FROM_ROLE } from "@resolve/shared";
-// ... keep existing: marketRowToMarket, normalizeSlug, derive8004Id, ApiAgent ...
 
-function agentMetaToApiAgent(meta: typeof AGENT_META[number]): ApiAgent {
+function agentMetaToApiAgent(meta: AgentMeta): ApiAgent {
   return {
     id: meta.id,
     name: meta.callsign,
@@ -200,16 +132,14 @@ function agentMetaToApiAgent(meta: typeof AGENT_META[number]): ApiAgent {
 }
 
 export const FALLBACK_AGENTS: ApiAgent[] = AGENT_META.map(agentMetaToApiAgent);
-
-// 注意：删除旧的 agentFallback() 函数和 hashString-based stats 逻辑
-// 保留 derive8004Id(), deriveStance(), hashString()（其他映射可能还在用）
 ```
 
-同时更新 mappers.ts 中的 `agentRowToAgent()` 函数，使其从 `KIND_FROM_ROLE` 读取映射（而不是内联映射对象）。
+同时：删除内联的 `KIND_FROM_ROLE` 定义（改为 import）、删除 `agentFallback()` 函数、删除 `deriveStance()`（已由 `AGENT_META.stance` 替代）、删除基于 `hashString` 的统计派生逻辑。
 
-### Step 5: 创建 DB seeding 脚本
+保留：`derive8004Id()`、`hashString()`（其他映射场景还在用）。
 
-`packages/db/scripts/seed-agents.ts`：
+### Step 5: `packages/db/scripts/seed-agents.ts`
+
 ```typescript
 import { AGENT_META } from "@resolve/shared";
 import { getDb } from "../src/client";
@@ -217,52 +147,37 @@ import { getDb } from "../src/client";
 async function seed() {
   const db = getDb();
   if (!db) {
-    console.error("❌ Supabase not configured. Skipping DB seeding.");
+    console.error("❌ Supabase not configured. Skipping.");
     process.exit(0);
   }
-  
   for (const agent of AGENT_META) {
-    const { error } = await db
-      .from("agents")
-      .upsert({
-        agent_id: agent.id,
-        name: agent.callsign,
-        role: agent.role,
-        role_label: agent.roleLabel,
-        tier: agent.tier,
-        description: agent.description,
-        provider: agent.provider,
-        powered_by: agent.modelHint,
-        sort_order: agent.sortOrder,
-      }, { onConflict: "agent_id" });
-    
+    const { error } = await db.from("agents").upsert({
+      agent_id: agent.id,
+      name: agent.callsign,
+      role: agent.role,
+      role_label: agent.roleLabel,
+      tier: agent.tier,
+      description: agent.description,
+      provider: agent.provider,
+      powered_by: agent.modelHint,
+      sort_order: agent.sortOrder,
+    }, { onConflict: "agent_id" });
     if (error) console.error(`❌ ${agent.callsign}: ${error.message}`);
-    else console.log(`✅ ${agent.callsign} (${agent.name}) synced`);
+    else console.log(`✅ ${agent.callsign} synced`);
   }
 }
 seed();
 ```
 
-在 `packages/db/package.json` 中添加：
+`packages/db/package.json` 添加：
 ```json
-{
-  "scripts": {
-    "seed:agents": "tsx scripts/seed-agents.ts"
-  }
-}
+{ "scripts": { "seed:agents": "tsx scripts/seed-agents.ts" } }
+```
 
 ### Step 6: 验证
 
 ```bash
 pnpm typecheck
 pnpm build
-pnpm --filter @resolve/db seed:agents  # 如果 Supabase 已配置
+pnpm --filter @resolve/db seed:agents  # Supabase 已配置时
 ```
-
-## 不需要改的
-
-- `packages/ai/src/prompts.ts` — system prompt 保留完整人设
-- `apps/web/app/api/agents/route.ts` — 已经是 DB → FALLBACK_AGENTS 降级模式，FALLBACK_AGENTS 更新后自动生效
-- `apps/web/app/api/agents/[id]/route.ts` — 同上
-- `packages/db/migrations/00002_add_agents.sql` — 保留不动
-- `packages/db/src/data.ts` / `types.ts` / `index.ts` — `AgentRow`、`listAgents()`、`getAgentById()` 保留（API 路由还在用）
