@@ -47,7 +47,7 @@ export function SiteFooter() {
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <p className="max-w-md text-sm font-medium text-ink/70">{t("footer.tagline")}</p>
             <p className="font-score text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-              HTX Genesis Hackathon · 2026 · v0.1 mock
+              HTX Genesis Hackathon · 2026 · v0.1
             </p>
           </div>
         </div>
