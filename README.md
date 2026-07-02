@@ -31,7 +31,7 @@ Today's prediction markets rely on either:
 
 **RESOLVE replaces all three with AI-native consensus.**
 
-Multiple specialized AI agents independently gather real-world evidence, form judgments, and reach a weighted consensus — all deterministically recorded on-chain. No human in the loop. No single oracle to corrupt.
+Six specialized AI agents across three stances — **bullish, bearish, and neutral** — independently gather real-world evidence, form judgments, and reach a weighted consensus — all deterministically recorded on-chain. No human in the loop. No single oracle to corrupt.
 
 ### How it works
 
@@ -39,27 +39,30 @@ Multiple specialized AI agents independently gather real-world evidence, form ju
 ┌──────────────┐    ┌──────────────────┐    ┌──────────────┐
 │  Market      │    │  AI Oracle       │    │  Settlement  │
 │  Created     │───→│  Deliberation    │───→│  Executed    │
-│  (TronLink)  │    │  (3 Agents)      │    │  (TRC-20)    │
+│  (TronLink)  │    │  (6 Agents)      │    │  (TRC-20)    │
 └──────────────┘    └──────────────────┘    └──────────────┘
                           │
-                    ┌─────┼─────┐
-                    │     │     │
-               Exchange  Media  On-chain
-               Oracle   Oracle  Oracle
-                   │       │       │
-              HTX Price  News    Wallet
-                Data    Feeds  Activity
+               ┌──────────┼──────────┐
+               │          │          │
+            BULL        BEAR       NEUT
+          (2 agents)  (2 agents)  (2 agents)
+               │          │          │
+          Exchange +   Media +    On-chain +
+           Tech       Regulation   Macro
 ```
 
-### The Agent Trinity
+### Six Agents, Three Stances
 
-| Agent | Role | Evidence Source | Temperament |
-|-------|------|----------------|-------------|
-| **BULL-1** | Exchange Oracle | HTX price data, volume trends, orderbook signals | Bullish, data-driven |
-| **BEAR-1** | Media Oracle | News sentiment, regulatory landscape, macro risk | Conservative, context-aware |
-| **NEUT-1** | On-chain Oracle | Wallet activity, whale movements, network stats | Neutral, probabilistic |
+| Stance | Agent | Role | Weight | Evidence Source |
+|:------:|-------|------|:------:|-----------------|
+| **BULL** (看多→YES) | **BULL-1** | Exchange Oracle | 1.0 | HTX price, volume, orderbook |
+| | **BULL-2** | Tech Oracle | 0.8 | TEE/L2 adoption, dev activity |
+| **BEAR** (看空→NO) | **BEAR-1** | Media Oracle | 0.8 | News sentiment, macro risk |
+| | **BEAR-2** | Regulation Oracle | 0.8 | SEC, MiCA, global regulatory policy |
+| **NEUT** (中立→数据驱动) | **NEUT-1** | Onchain Oracle | 0.9 | On-chain flows, whale behavior |
+| | **NEUT-2** | Macro Oracle | 0.9 | Interest rates, geopolitics |
 
-Three agents, three perspectives, one consensus. Each vote is transparent, each evidence trail auditable.
+Six agents, two per stance, one weighted consensus. Each vote is transparent, each evidence trail auditable. Consensus threshold: **0.65**.
 
 ---
 
@@ -98,7 +101,7 @@ resolve/
 | Layer | Technology |
 |-------|-----------|
 | **Frontend** | Next.js 16, React 19, Tailwind CSS 4, Framer Motion |
-| **AI Oracle** | Anthropic Claude 4 Sonnet, 3-agent parallel inference |
+| **AI Oracle** | Anthropic Claude 4 Sonnet, 6-agent parallel inference (2+2+2 BULL/BEAR/NEUT) |
 | **Smart Contract** | Solidity ^0.8.24, TRON Shasta Testnet |
 | **Wallet** | TronLink browser extension |
 | **Data** | In-memory store (dev) → TRC-20 on-chain (production) |
@@ -137,8 +140,8 @@ ANTHROPIC_API_KEY=sk-ant-...    # Claude API key
 2. **Browse** — Explore live prediction markets (BTC $150K, ETH ETF staking, etc.)
 3. **Trade** — Buy YES on a market with testnet USDD
 4. **Expire** — Market reaches end date → triggers AI deliberation
-5. **Deliberate** — 3 AI agents independently gather evidence & vote
-6. **Consensus** — Weighted outcome emerges, confidence crosses threshold
+5. **Deliberate** — 6 AI agents (2+2+2 BULL/BEAR/NEUT) independently gather evidence & vote
+6. **Consensus** — Weighted outcome emerges, confidence crosses 0.65 threshold
 7. **Settle** — Smart contract auto-pays winners on TRON testnet
 
 > Full demo: ~45 seconds, one fluid shot from wallet to payout.

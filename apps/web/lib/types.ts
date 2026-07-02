@@ -43,14 +43,14 @@ export type AgentKind =
   | "exchange-oracle"
   | "media-oracle"
   | "onchain-oracle"
-  | "sports-feed"
-  | "weather-feed"
-  | "election-monitor";
+  | "tech-oracle"
+  | "regulation-oracle"
+  | "macro-oracle";
 
 export interface Agent {
   id: string;
   name: string;
-  callsign: string; // e.g. ORACLE-A3
+  callsign: string; // e.g. BULL-1
   kind: AgentKind;
   description: string;
   modelHint: string; // "Claude 4.7" / "GPT" / "B.AI" — just labels
@@ -60,6 +60,8 @@ export interface Agent {
   accuracyPct: number;
   avgConfidence: number;
   status: "online" | "syncing" | "offline";
+  tier?: string;
+  weight?: number;
 }
 
 export interface AgentVote {
@@ -69,6 +71,8 @@ export interface AgentVote {
   confidence: number; // 0..1
   evidence: Evidence[];
   decidedAt: string;
+  tier?: string;
+  weight?: number;
 }
 
 export interface Evidence {

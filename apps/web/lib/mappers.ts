@@ -110,11 +110,12 @@ export function normalizeSlug(slug: string): string {
 // Agent 映射
 // ─────────────────────────────────────────────
 
-// API 返回的 Agent 是前端 Agent 的超集：额外带 DB 字段（role/tier/powered_by/8004）
+// API 返回的 Agent 是前端 Agent 的超集：额外带 DB 字段（role/stance/powered_by/8004）
 export interface ApiAgent extends Agent {
   agentId: string;
   roleLabel: string;
   tier: "active" | "standby";
+  stance: "BULL" | "BEAR" | "NEUT";
   poweredBy: string;
   ba8004Id: string | null;
 }
@@ -139,6 +140,7 @@ export function derive8004Id(agentId: string): string {
 
 export function agentRowToAgent(row: AgentRow): ApiAgent {
   const seed = hashString(row.agent_id);
+  const stance = deriveStance(row.agent_id);
   return {
     id: row.agent_id,
     name: row.name,
@@ -155,9 +157,18 @@ export function agentRowToAgent(row: AgentRow): ApiAgent {
     agentId: row.agent_id,
     roleLabel: row.role_label,
     tier: row.tier,
+    stance,
     poweredBy: row.powered_by ?? "GPT",
     ba8004Id: row.ba_8004_id ?? derive8004Id(row.agent_id),
   };
+}
+
+/** 根据 agent_id 推导 BULL/BEAR/NEUT 立场 */
+function deriveStance(agentId: string): "BULL" | "BEAR" | "NEUT" {
+  if (agentId.startsWith("bull")) return "BULL";
+  if (agentId.startsWith("bear")) return "BEAR";
+  if (agentId.startsWith("neut")) return "NEUT";
+  return "NEUT";
 }
 
 // ─────────────────────────────────────────────
@@ -166,17 +177,17 @@ export function agentRowToAgent(row: AgentRow): ApiAgent {
 
 /** 6 个 Agent 的兜底数据（与 migration 00002 的全 ACTIVE 设计一致）。 */
 export const FALLBACK_AGENTS: ApiAgent[] = [
-  agentFallback("bull-1", "BULL-1", "exchange-oracle", "Exchange Oracle", "GPT + HTX",
+  agentFallback("bull-1", "BULL-1", "exchange-oracle", "Exchange Oracle", "BULL", "GPT + HTX",
     "Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data."),
-  agentFallback("bull-2", "BULL-2", "tech-oracle", "Tech Oracle", "GPT",
+  agentFallback("bull-2", "BULL-2", "tech-oracle", "Tech Oracle", "BULL", "GPT",
     "Fundamentals agent tracking TEE/L2 adoption, network throughput, and developer activity for a technology-driven bullish read."),
-  agentFallback("bear-1", "BEAR-1", "media-oracle", "Media Oracle", "GPT",
+  agentFallback("bear-1", "BEAR-1", "media-oracle", "Media Oracle", "BEAR", "GPT",
     "Fundamental analysis agent focusing on news sentiment, regulatory developments, and macro risks. Uses a curated evidence set for balanced assessment."),
-  agentFallback("bear-2", "BEAR-2", "regulation-oracle", "Regulation Oracle", "GPT",
+  agentFallback("bear-2", "BEAR-2", "regulation-oracle", "Regulation Oracle", "BEAR", "GPT",
     "Global regulatory agent monitoring SEC, MiCA, and cross-border policy for downside risk to the thesis."),
-  agentFallback("neut-1", "NEUT-1", "onchain-oracle", "Onchain Oracle", "GPT",
+  agentFallback("neut-1", "NEUT-1", "onchain-oracle", "Onchain Oracle", "NEUT", "GPT",
     "Data-driven neutral analysis agent examining on-chain holdings, whale movements, and exchange net flows for impartial assessment."),
-  agentFallback("neut-2", "NEUT-2", "macro-oracle", "Macro Oracle", "GPT",
+  agentFallback("neut-2", "NEUT-2", "macro-oracle", "Macro Oracle", "NEUT", "GPT",
     "Macro agent weighing rates, liquidity, and geopolitics for a probabilistic neutral stance."),
 ];
 
@@ -185,6 +196,7 @@ function agentFallback(
   name: string,
   role: string,
   roleLabel: string,
+  stance: "BULL" | "BEAR" | "NEUT",
   poweredBy: string,
   description: string,
 ): ApiAgent {
@@ -205,6 +217,7 @@ function agentFallback(
     agentId,
     roleLabel,
     tier: "active",
+    stance,
     poweredBy,
     ba8004Id: derive8004Id(agentId),
   };

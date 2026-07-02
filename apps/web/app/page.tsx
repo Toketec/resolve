@@ -11,6 +11,9 @@ import {
   Signal,
   Zap,
   CheckCircle2,
+  TrendingUp,
+  TrendingDown,
+  Scale,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MarketCard } from "@/components/market-card";
@@ -154,7 +157,7 @@ export default function LandingPage() {
             eyebrow={t("oracle.aEyebrow")}
             title={t("oracle.aTitle")}
             body={t("oracle.aBody")}
-            icon={<Database className="size-6" strokeWidth={2.5} />}
+            icon={<TrendingUp className="size-6" strokeWidth={2.5} />}
             bg="bg-pitch-500"
             ink="dark"
           />
@@ -162,15 +165,15 @@ export default function LandingPage() {
             eyebrow={t("oracle.bEyebrow")}
             title={t("oracle.bTitle")}
             body={t("oracle.bBody")}
-            icon={<Newspaper className="size-6" strokeWidth={2.5} />}
-            bg="bg-goal-500"
-            ink="dark"
+            icon={<TrendingDown className="size-6" strokeWidth={2.5} />}
+            bg="bg-magenta-500"
+            ink="light"
           />
           <PillarCard
             eyebrow={t("oracle.cEyebrow")}
             title={t("oracle.cTitle")}
             body={t("oracle.cBody")}
-            icon={<Cpu className="size-6" strokeWidth={2.5} />}
+            icon={<Scale className="size-6" strokeWidth={2.5} />}
             bg="bg-royal-500"
             ink="light"
           />

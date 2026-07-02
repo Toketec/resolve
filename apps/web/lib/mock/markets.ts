@@ -196,27 +196,27 @@ function buildConsensus(m: Omit<Market, "history" | "consensus">, idx: number): 
     return {
       status: "pending" as const,
       confidence: 0,
-      threshold: 0.75,
+      threshold: 0.65,
       votes: [],
       startedAt: new Date(Math.floor(new Date(m.expiresAt).getTime() / 1000) * 1000).toISOString(),
     };
   }
   if (m.status === "resolving") {
-    const ag = MOCK_AGENTS.slice(0, 4);
+    const ag = MOCK_AGENTS;
     return {
       status: "deliberating" as const,
       confidence: 0.62,
-      threshold: 0.75,
+      threshold: 0.65,
       startedAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
       votes: ag.map((a, i2) => ({
         agentId: a.id,
         callsign: a.callsign,
-        vote: i2 === 3 ? ("NO" as const) : ("YES" as const),
-        confidence: [0.82, 0.78, 0.71, 0.55][i2] ?? 0.6,
-        decidedAt: new Date(Date.now() - (30 - i2 * 5) * 60 * 1000).toISOString(),
+        vote: i2 >= 3 ? ("NO" as const) : ("YES" as const),
+        confidence: [0.82, 0.78, 0.56, 0.71, 0.55, 0.63][i2] ?? 0.6,
+        decidedAt: new Date(Date.now() - (30 - i2 * 4) * 60 * 1000).toISOString(),
         evidence: [
           {
-            source: a.kind === "media-oracle" ? "reuters.com" : "official",
+            source: a.kind === "media-oracle" ? "reuters.com" : a.kind === "onchain-oracle" ? "etherscan.io" : "official",
             url: "https://example.com",
             snippet: `Cross-checked ${m.title.split("?")[0].toLowerCase()} against ${a.callsign} primary feed.`,
             timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
@@ -231,19 +231,20 @@ function buildConsensus(m: Omit<Market, "history" | "consensus">, idx: number): 
     };
   }
   if (m.status === "resolved") {
+    const resolvedVote = m.resolvedOutcome ?? ("YES" as const);
     return {
       status: "consensus" as const,
       outcome: m.resolvedOutcome,
       confidence: 0.92,
-      threshold: 0.75,
+      threshold: 0.65,
       startedAt: new Date(new Date(m.resolvedAt!).getTime() - 18 * 60 * 1000).toISOString(),
       finalizedAt: m.resolvedAt,
-      votes: MOCK_AGENTS.slice(0, 4).map((a, i2) => ({
+      votes: MOCK_AGENTS.map((a, i2) => ({
         agentId: a.id,
         callsign: a.callsign,
-        vote: m.resolvedOutcome ?? ("YES" as const),
-        confidence: [0.96, 0.94, 0.9, 0.88][i2] ?? 0.9,
-        decidedAt: new Date(new Date(m.resolvedAt!).getTime() - (15 - i2 * 3) * 60 * 1000).toISOString(),
+        vote: i2 >= 3 && resolvedVote === "YES" ? ("NO" as const) : resolvedVote,
+        confidence: [0.96, 0.94, 0.88, 0.90, 0.85, 0.92][i2] ?? 0.9,
+        decidedAt: new Date(new Date(m.resolvedAt!).getTime() - (15 - i2 * 2) * 60 * 1000).toISOString(),
         evidence: [
           {
             source: "official",

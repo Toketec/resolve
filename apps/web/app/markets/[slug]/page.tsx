@@ -159,7 +159,7 @@ export default async function MarketDetailPage({ params }: PageProps) {
               <Row label="Expires" value={formatRelative(market.expiresAt)} />
               <Row label="Creator" value={market.creator.name} sub={shortAddr(market.creator.address)} />
               <Row label="Category" value={market.category} />
-              <Row label="Threshold" value={`${Math.round((market.consensus?.threshold ?? 0.75) * 100)}%`} />
+              <Row label="Threshold" value={`${Math.round((market.consensus?.threshold ?? 0.65) * 100)}%`} />
             </div>
           </div>
 

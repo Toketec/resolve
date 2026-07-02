@@ -79,7 +79,7 @@ export function ConsensusMeter({ consensus, className }: Props) {
         </div>
 
         {consensus.votes.length > 0 && (
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {consensus.votes.map((v) => (
               <div
                 key={v.agentId}

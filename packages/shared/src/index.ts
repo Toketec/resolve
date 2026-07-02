@@ -11,16 +11,18 @@ export interface Market {
   creator: { name: string; address: string }; imageHint: string;
   consensus?: AIConsensus; related?: string[];
 }
-export type AgentKind = "exchange-oracle" | "media-oracle" | "onchain-oracle" | "sports-feed" | "weather-feed" | "election-monitor";
+export type AgentKind = "exchange-oracle" | "media-oracle" | "onchain-oracle" | "tech-oracle" | "regulation-oracle" | "macro-oracle";
 export interface Agent {
   id: string; name: string; callsign: string; kind: AgentKind;
   description: string; modelHint: string; region: string;
   uptimePct: number; resolutions: number; accuracyPct: number;
   avgConfidence: number; status: "online" | "syncing" | "offline";
+  tier?: string; weight?: number;
 }
 export interface AgentVote {
   agentId: string; callsign: string; vote: Outcome;
   confidence: number; evidence: Evidence[]; decidedAt: string;
+  tier?: string; weight?: number;
 }
 export interface Evidence {
   source: string; url: string; snippet: string;

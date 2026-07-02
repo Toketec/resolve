@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Cpu, Globe2, Newspaper, Radio, ShieldCheck, Activity } from "lucide-react";
+import { Cpu, Globe2, Newspaper, Radio, ShieldCheck, Activity, TrendingUp, TrendingDown, Scale } from "lucide-react";
 import { MOCK_AGENTS, MOCK_MARKETS } from "@/lib/mock";
 import { fetchAgents, fetchMarkets } from "@/lib/api-client";
 import { formatPct } from "@/lib/utils";
@@ -9,9 +9,16 @@ const KIND_ICON: Record<string, React.ReactNode> = {
   "exchange-oracle": <Activity className="size-5" strokeWidth={2.5} />,
   "media-oracle": <Newspaper className="size-5" strokeWidth={2.5} />,
   "onchain-oracle": <Cpu className="size-5" strokeWidth={2.5} />,
-  "sports-feed": <Radio className="size-5" strokeWidth={2.5} />,
-  "weather-feed": <Globe2 className="size-5" strokeWidth={2.5} />,
-  "election-monitor": <ShieldCheck className="size-5" strokeWidth={2.5} />,
+  "tech-oracle": <Globe2 className="size-5" strokeWidth={2.5} />,
+  "regulation-oracle": <ShieldCheck className="size-5" strokeWidth={2.5} />,
+  "macro-oracle": <Radio className="size-5" strokeWidth={2.5} />,
+};
+
+/** Tier grouping with visual labels for 2+2+2 BULL/BEAR/NEUT architecture. */
+const TIER_META: Record<string, { label: string; color: string }> = {
+  BULL: { label: "BULL · Bullish", color: "bg-pitch-500 text-ink" },
+  BEAR: { label: "BEAR · Bearish", color: "bg-magenta-500 text-canvas" },
+  NEUT: { label: "NEUT · Neutral", color: "bg-royal-500 text-canvas" },
 };
 
 const STATUS_BG: Record<string, string> = {
@@ -81,6 +88,23 @@ export default async function AgentsPage() {
             Meet the agents.
           </h2>
         </header>
+
+        {/* Tier group headers — BULL / BEAR / NEUT */}
+        <div className="mb-6 flex flex-wrap gap-3">
+          {(["BULL", "BEAR", "NEUT"] as const).map((tier) => {
+            const meta = TIER_META[tier];
+            const Icon = tier === "BULL" ? TrendingUp : tier === "BEAR" ? TrendingDown : Scale;
+            return (
+              <span
+                key={tier}
+                className={`inline-flex items-center gap-1.5 rounded-full border-2 border-ink px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] shadow-stamp-sm ${meta.color}`}
+              >
+                <Icon className="size-3" strokeWidth={2.5} />
+                {meta.label}
+              </span>
+            );
+          })}
+        </div>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((a, i) => {
@@ -205,7 +229,7 @@ export default async function AgentsPage() {
                     </span>
                   </td>
                   <td className="font-score px-4 py-3 text-right text-sm font-bold text-ink">
-                    {m.consensus?.votes.length ?? 0} / 4
+                    {m.consensus?.votes.length ?? 0} / 6
                   </td>
                 </tr>
               ))}
