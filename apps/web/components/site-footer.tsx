@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useT } from "./i18n-provider";
+import { useI18n } from "./i18n-provider";
 
 export function SiteFooter() {
-  const t = useT();
+  const { locale, t } = useI18n();
+  const whitepaperHref = locale === "zh"
+    ? "https://app.notion.com/p/RESOLVE-AI-3919d182044c80b4b8c7e678bd4554f4"
+    : "https://app.notion.com/p/RESOLVE-AI-Native-Prediction-Markets-3919d182044c80489b8aebe35f1d4ad0";
   return (
     <footer className="mt-12 border-t-2 border-ink bg-raised">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
@@ -19,7 +22,7 @@ export function SiteFooter() {
             { href: "#", label: t("footer.aiConsensus") },
             { href: "#", label: t("footer.disputeMode") },
             { href: "#", label: t("footer.registry") },
-            { href: "#", label: t("footer.whitepaper") },
+            { href: whitepaperHref, label: t("footer.whitepaper") },
           ]} />
           <Col title={t("footer.ecosystem")} tone="text-crowd-700" items={[
             { href: "#", label: "HTX ecosystem" },
