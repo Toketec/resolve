@@ -5,6 +5,7 @@ export {
   updateMarket,
   getPosition,
   insertPosition,
+  listPositionsByWallet,
   getLatestConsensus,
   insertConsensus,
   getConsensusVotes,

@@ -4,11 +4,11 @@
 
 | ID | 任务 | 状态 | 工时 | 备注 |
 |:--:|------|:----:|:----:|------|
-| 7.1 | 创建 `app/api/positions/route.ts` — Supabase 查+兜底 | ☐ | 30min | wallet 参数过滤 |
-| 7.2 | 创建 `app/api/trades/route.ts` — Supabase 查+兜底 | ☐ | 20min | 与 positions 类似 |
-| 7.3 | 修改 `lib/api-client.ts` — 添加 fetchPositions/fetchTrades | ☐ | 10min | |
-| 7.4 | 修改 `app/portfolio/page.tsx` — 客户端化+API数据+钱包联动 | ☐ | 1h | 最复杂改动 |
-| 7.5 | 验证: typecheck + build + curl + 浏览器 | ☐ | 20min | |
+| 7.1 | 创建 `app/api/positions/route.ts` — Supabase 查+兜底 | ☑ | 30min | wallet 参数过滤 |
+| 7.2 | 创建 `app/api/trades/route.ts` — Supabase 查+兜底 | ☑ | 20min | 与 positions 类似 |
+| 7.3 | 修改 `lib/api-client.ts` — 添加 fetchPositions/fetchTrades | ☑ | 10min | |
+| 7.4 | 修改 `app/portfolio/page.tsx` — 客户端化+API数据+钱包联动 | ☑ | 1h | 最复杂改动 |
+| 7.5 | 验证: typecheck + build + curl + 浏览器 | ☑ | 20min | |
 
 ## 验证清单
 

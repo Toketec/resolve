@@ -1,17 +1,41 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { StatusChip } from "@/components/ui/status-chip";
+import { useWallet } from "@/components/wallet-provider";
+import { fetchPositions, fetchTrades } from "@/lib/api-client";
 import { MOCK_POSITIONS, MOCK_TRADES, portfolioStats } from "@/lib/mock";
-import { cn, formatPct, formatRelative, formatUSD } from "@/lib/utils";
+import type { Position, Trade } from "@/lib/types";
+import { cn, formatPct, formatRelative, formatUSD, shortAddr } from "@/lib/utils";
 
 export default function PortfolioPage() {
-  const stats = portfolioStats();
+  const wallet = useWallet();
+  const [positions, setPositions] = useState<Position[]>(MOCK_POSITIONS);
+  const [trades, setTrades] = useState<Trade[]>(MOCK_TRADES.slice(0, 12));
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (wallet?.address) {
+      setLoading(true);
+      Promise.all([
+        fetchPositions(wallet.address).catch(() => MOCK_POSITIONS),
+        fetchTrades(wallet.address).catch(() => MOCK_TRADES.slice(0, 12)),
+      ]).then(([p, t]) => {
+        setPositions(p);
+        setTrades(t);
+        setLoading(false);
+      });
+    }
+  }, [wallet?.address]);
+
+  const stats = portfolioStats(positions);
   const positionsByStatus = {
-    open: MOCK_POSITIONS.filter((p) => p.status === "live" || p.status === "resolving"),
-    resolved: MOCK_POSITIONS.filter((p) => p.status === "resolved"),
+    open: positions.filter((p) => p.status === "live" || p.status === "resolving"),
+    resolved: positions.filter((p) => p.status === "resolved"),
   };
-  const trades = MOCK_TRADES.slice(0, 12);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
@@ -41,9 +65,16 @@ export default function PortfolioPage() {
               <span className="font-score text-sm font-bold uppercase tracking-wider text-ink/80">
                 open · <span className="text-ink">{stats.open}</span>
               </span>
+              {loading && (
+                <span className="font-score text-xs font-bold text-muted animate-pulse">
+                  syncing…
+                </span>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Wallet card */}
         <div className="overflow-hidden rounded-3xl border-2 border-ink bg-card p-6 shadow-stamp-sm">
           <div className="flex items-center gap-2">
             <Wallet className="size-4 text-ink" strokeWidth={2.5} />
@@ -51,17 +82,52 @@ export default function PortfolioPage() {
               Wallet
             </p>
           </div>
-          <p className="mt-3 text-sm font-medium text-ink/75">
-            Mock wallet — connect a real wallet in the next phase.
-          </p>
-          <div className="mt-5 space-y-2">
-            <Row label="Address" value="0x77a8…D8a9F1" />
-            <Row label="Balance" value="2,134.50 USDD" />
-            <Row label="Network" value="HTX · L2" />
-          </div>
-          <button className="mt-5 w-full rounded-full border-2 border-ink bg-goal-500 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-ink shadow-stamp-sm transition hover:-translate-y-0.5 hover:shadow-stamp">
-            Deposit USDD
-          </button>
+          {wallet.connected ? (
+            <>
+              <p className="mt-3 text-sm font-medium text-goal-500">
+                Connected
+              </p>
+              <div className="mt-5 space-y-2">
+                <Row label="Address" value={shortAddr(wallet.address)} />
+                <Row label="Network" value={wallet.network === "shasta" ? "Shasta Testnet" : wallet.network === "mainnet" ? "TRON Mainnet" : wallet.network === "nile" ? "Nile Testnet" : "Unknown"} />
+                <Row label="Status" value="Ready to trade" />
+              </div>
+            </>
+          ) : wallet.installed ? (
+            <>
+              <p className="mt-3 text-sm font-medium text-ink/75">
+                TronLink detected — connect to see your positions.
+              </p>
+              <button
+                onClick={wallet.connect}
+                disabled={wallet.connecting}
+                className="mt-5 w-full rounded-full border-2 border-ink bg-goal-500 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-ink shadow-stamp-sm transition hover:-translate-y-0.5 hover:shadow-stamp disabled:opacity-50"
+              >
+                {wallet.connecting ? "Connecting…" : "Connect Wallet"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 text-sm font-medium text-ink/75">
+                No wallet detected — install{" "}
+                <a
+                  href="https://www.tronlink.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-dotted underline-offset-2 hover:text-royal-500"
+                >
+                  TronLink
+                </a>{" "}
+                to trade predictions.
+              </p>
+              <button
+                disabled
+                className="mt-5 w-full rounded-full border-2 border-ink bg-muted py-2.5 text-sm font-black uppercase tracking-[0.12em] text-muted-dark shadow-stamp-sm cursor-not-allowed"
+              >
+                No Wallet
+              </button>
+            </>
+          )}
         </div>
       </section>
 

@@ -5,7 +5,7 @@
 // 所有方法在失败时抛错，调用方负责 loading/error/兜底。
 // ─────────────────────────────────────────────
 
-import type { Market, AIConsensus, Outcome } from "@/lib/types";
+import type { Market, AIConsensus, Outcome, Position, Trade } from "@/lib/types";
 import type { ApiAgent } from "@/lib/mappers";
 
 /** 服务端绝对 base；客户端返回空串（相对路径）。 */
@@ -109,4 +109,14 @@ export interface PriceSnapshot {
 
 export function fetchPrice(symbol: string): Promise<PriceSnapshot> {
   return apiGet<PriceSnapshot>(`/api/price/${symbol}`);
+}
+
+// ── 持仓 & 交易历史 ──────────────────────────────────────────
+
+export function fetchPositions(wallet: string): Promise<Position[]> {
+  return apiGet<Position[]>(`/api/positions?wallet=${encodeURIComponent(wallet)}`);
+}
+
+export function fetchTrades(wallet: string): Promise<Trade[]> {
+  return apiGet<Trade[]>(`/api/trades?wallet=${encodeURIComponent(wallet)}`);
 }

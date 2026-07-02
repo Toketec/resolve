@@ -72,6 +72,20 @@ export async function getPosition(
   return data as PositionRow;
 }
 
+/** 按钱包地址获取该钱包下所有持仓（按创建时间倒序） */
+export async function listPositionsByWallet(
+  walletAddress: string,
+): Promise<PositionRow[]> {
+  const { data, error } = await getAnyClient()
+    .from('positions')
+    .select('*, markets(*)')
+    .eq('wallet_address', walletAddress)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`Failed to list positions by wallet: ${error.message}`);
+  return (data ?? []) as PositionRow[];
+}
+
 /** 记录新仓位 */
 export async function insertPosition(input: {
   market_id: string;
