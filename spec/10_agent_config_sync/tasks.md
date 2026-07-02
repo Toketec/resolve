@@ -6,7 +6,7 @@
 | T02 | 删除 mappers.ts 中的 FALLBACK_AGENTS + agentFallback() + deriveStance() + 内联 KIND_FROM_ROLE | `apps/web/lib/mappers.ts` | P0 | ⬜ |
 | T03 | 检查 mock/agents.ts 数据与 SQL 一致 | `apps/web/lib/mock/agents.ts` | P1 | ⬜ |
 | T04 | 检查 API 路由中 FALLBACK_AGENTS 引用，改为查 DB | `apps/web/app/api/` | P0 | ⬜ |
-| T05 | `pnpm typecheck && pnpm build` | — | P0 | ⬜ |
+| T05 | `pnpm typecheck && pnpm build` | — | P0 | ✅ |
 
 ## 完成条件
 
