@@ -1,6 +1,6 @@
 // GET /api/agents — Agent 列表（6 个全 ACTIVE）
 import { getDb } from "@/lib/supabase-server";
-import { agentRowToAgent, FALLBACK_AGENTS } from "@/lib/mappers";
+import { agentRowToAgent } from "@/lib/mappers";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +13,8 @@ export async function GET() {
         return Response.json(rows.map(agentRowToAgent));
       }
     } catch (err) {
-      console.error("[api/agents] Supabase read failed, falling back to mock:", err);
+      console.error("[api/agents] Supabase read failed:", err);
     }
   }
-  return Response.json(FALLBACK_AGENTS);
+  return Response.json([]);
 }

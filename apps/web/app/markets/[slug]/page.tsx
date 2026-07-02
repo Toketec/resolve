@@ -7,8 +7,9 @@ import { TradePanel } from "@/components/trade-panel";
 import { PriceChart } from "@/components/price-chart";
 import { OracleDeliberation } from "@/components/oracle-deliberation";
 import { marketBySlug, MOCK_TRADES } from "@/lib/mock";
+import { MOCK_AGENTS } from "@/lib/mock/agents";
 import { fetchMarket, fetchAgents } from "@/lib/api-client";
-import { FALLBACK_AGENTS, type ApiAgent } from "@/lib/mappers";
+import { derive8004Id, type ApiAgent } from "@/lib/mappers";
 import { formatPct, formatRelative, formatUSD, shortAddr } from "@/lib/utils";
 import type { Market } from "@/lib/types";
 
@@ -16,11 +17,24 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+/** 将 mock/agents.ts 的 Agent 转为 ApiAgent 形状（仅 API 不可用时兜底） */
+function mockToApi(): ApiAgent[] {
+  return MOCK_AGENTS.map((a) => ({
+    ...a,
+    agentId: a.id,
+    roleLabel: a.kind,
+    tier: "active" as const,
+    stance: ((a.tier ?? "NEUT") as "BULL" | "BEAR" | "NEUT"),
+    poweredBy: a.modelHint,
+    ba8004Id: derive8004Id(a.id),
+  }));
+}
+
 export default async function MarketDetailPage({ params }: PageProps) {
   const { slug } = await params;
   // 从 API 读取市场；失败回退 mock（视觉不变）
   let market: Market | undefined;
-  let agents: ApiAgent[] = FALLBACK_AGENTS;
+  let agents: ApiAgent[] = mockToApi();
   try {
     const [m, a] = await Promise.all([fetchMarket(slug), fetchAgents()]);
     market = m;

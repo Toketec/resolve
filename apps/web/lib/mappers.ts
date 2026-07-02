@@ -120,15 +120,6 @@ export interface ApiAgent extends Agent {
   ba8004Id: string | null;
 }
 
-const KIND_FROM_ROLE: Record<string, Agent["kind"]> = {
-  "exchange-oracle": "exchange-oracle",
-  "media-oracle": "media-oracle",
-  "onchain-oracle": "onchain-oracle",
-  "tech-oracle": "exchange-oracle",
-  "regulation-oracle": "media-oracle",
-  "macro-oracle": "onchain-oracle",
-};
-
 // B.AI 8004 链上身份 ID（确定性派生，供 UI 展示 + Tronscan 链接）
 // 真实集成时替换为 B.AI 8004 注册返回的链上 agent id。
 export function derive8004Id(agentId: string): string {
@@ -140,12 +131,11 @@ export function derive8004Id(agentId: string): string {
 
 export function agentRowToAgent(row: AgentRow): ApiAgent {
   const seed = hashString(row.agent_id);
-  const stance = deriveStance(row.agent_id);
   return {
     id: row.agent_id,
     name: row.name,
     callsign: row.name,
-    kind: KIND_FROM_ROLE[row.role] ?? "exchange-oracle",
+    kind: row.role as Agent["kind"],
     description: row.description,
     modelHint: row.powered_by ?? "GPT",
     region: ["ap-south-1", "eu-west-2", "us-east-1", "us-west-2", "eu-central-1", "ap-northeast-1"][seed % 6],
@@ -157,69 +147,9 @@ export function agentRowToAgent(row: AgentRow): ApiAgent {
     agentId: row.agent_id,
     roleLabel: row.role_label,
     tier: row.tier,
-    stance,
+    stance: row.stance,
     poweredBy: row.powered_by ?? "GPT",
     ba8004Id: row.ba_8004_id ?? derive8004Id(row.agent_id),
-  };
-}
-
-/** 根据 agent_id 推导 BULL/BEAR/NEUT 立场 */
-function deriveStance(agentId: string): "BULL" | "BEAR" | "NEUT" {
-  if (agentId.startsWith("bull")) return "BULL";
-  if (agentId.startsWith("bear")) return "BEAR";
-  if (agentId.startsWith("neut")) return "NEUT";
-  return "NEUT";
-}
-
-// ─────────────────────────────────────────────
-// Mock 兜底数据集（Supabase 未配置时使用）
-// ─────────────────────────────────────────────
-
-/** 6 个 Agent 的兜底数据（与 migration 00002 的全 ACTIVE 设计一致）。 */
-export const FALLBACK_AGENTS: ApiAgent[] = [
-  agentFallback("bull-1", "BULL-1", "exchange-oracle", "Exchange Oracle", "BULL", "GPT + HTX",
-    "Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data."),
-  agentFallback("bull-2", "BULL-2", "tech-oracle", "Tech Oracle", "BULL", "GPT",
-    "Fundamentals agent tracking TEE/L2 adoption, network throughput, and developer activity for a technology-driven bullish read."),
-  agentFallback("bear-1", "BEAR-1", "media-oracle", "Media Oracle", "BEAR", "GPT",
-    "Fundamental analysis agent focusing on news sentiment, regulatory developments, and macro risks. Uses a curated evidence set for balanced assessment."),
-  agentFallback("bear-2", "BEAR-2", "regulation-oracle", "Regulation Oracle", "BEAR", "GPT",
-    "Global regulatory agent monitoring SEC, MiCA, and cross-border policy for downside risk to the thesis."),
-  agentFallback("neut-1", "NEUT-1", "onchain-oracle", "Onchain Oracle", "NEUT", "GPT",
-    "Data-driven neutral analysis agent examining on-chain holdings, whale movements, and exchange net flows for impartial assessment."),
-  agentFallback("neut-2", "NEUT-2", "macro-oracle", "Macro Oracle", "NEUT", "GPT",
-    "Macro agent weighing rates, liquidity, and geopolitics for a probabilistic neutral stance."),
-];
-
-function agentFallback(
-  agentId: string,
-  name: string,
-  role: string,
-  roleLabel: string,
-  stance: "BULL" | "BEAR" | "NEUT",
-  poweredBy: string,
-  description: string,
-): ApiAgent {
-  const seed = hashString(agentId);
-  return {
-    id: agentId,
-    name,
-    callsign: name,
-    kind: KIND_FROM_ROLE[role] ?? "exchange-oracle",
-    description,
-    modelHint: poweredBy,
-    region: ["ap-south-1", "eu-west-2", "us-east-1", "us-west-2", "eu-central-1", "ap-northeast-1"][seed % 6],
-    uptimePct: 0.997 + (seed % 25) / 10000,
-    resolutions: 700 + (seed % 60) * 90,
-    accuracyPct: 0.96 + (seed % 35) / 1000,
-    avgConfidence: 0.88 + (seed % 10) / 100,
-    status: "online",
-    agentId,
-    roleLabel,
-    tier: "active",
-    stance,
-    poweredBy,
-    ba8004Id: derive8004Id(agentId),
   };
 }
 

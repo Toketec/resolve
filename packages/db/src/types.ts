@@ -63,6 +63,8 @@ export interface AgentRow {
   role: string;
   role_label: string;
   tier: 'active' | 'standby';
+  stance: 'BULL' | 'BEAR' | 'NEUT';
+  weight: number;
   description: string;
   provider: string;
   status: 'idle' | 'thinking' | 'voted';
