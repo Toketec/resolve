@@ -3,44 +3,99 @@
 ## 核心架构
 
 ```
-旧 (5 份拷贝)                       新 (单源真理 + DB 持久化)
-────────────                         ────────────────────────────
-prompts.ts (AI)  ─┐                  prompts.ts (AI) ───→ 引用 metadata
-mock/agents.ts ───┤
-mappers.ts ───────┤→ 各自维护         @resolve/shared/agents.ts ←── 唯一编辑点
-migration SQL ────┤                  mock/agents.ts ───┐
-shared/types ─────┘                  mappers.ts ───────┤→ import from shared
-                                     seeding script ──→ Supabase agents 表
+旧 (5 份拷贝各自维护)                 新 (单源真理 + DB 持久化)
+────────────────────                  ────────────────────────────
+prompts.ts (AI 人设) ──→ 不动          prompts.ts ──→ 保留完整 system prompt
+mock/agents.ts ────────→ 冗余拷贝      mock/agents.ts ──→ import AGENT_META 派生
+mappers.ts ────────────→ 冗余拷贝      mappers.ts ──→ import AGENT_META 派生
+SQL migration ─────────→ 过期不执行    SQL migration ──→ 保留不动
+                                      @resolve/shared/agents.ts ←── 唯一编辑点
+                                      packages/db/scripts/seed-agents.ts → DB
+```
+
+## 规范配置完整数据
+
+以下 6 个 Agent 的规范数据来自 `spec/10_agent_config_sync/canonical-design.md`（引用自 docs/）：
+
+### 核心标识 + 模型
+
+| Agent ID | Callsign | Name | Role | Stance | Weight | modelHint | sortOrder |
+|:--------:|:--------:|:----:|:----:|:-----:|:------:|-----------|:---------:|
+| bull-1 | BULL-1 | Exchange Oracle | exchange-oracle | BULL | 1.0 | Claude Sonnet 4 | 1 |
+| bull-2 | BULL-2 | Tech Oracle | tech-oracle | BULL | 0.8 | Claude Sonnet 4 | 2 |
+| bear-1 | BEAR-1 | Media Oracle | media-oracle | BEAR | 0.8 | Claude Sonnet 4 | 3 |
+| bear-2 | BEAR-2 | Regulation Oracle | regulation-oracle | BEAR | 0.8 | Claude Sonnet 4 | 4 |
+| neut-1 | NEUT-1 | Onchain Oracle | onchain-oracle | NEUT | 0.9 | B.AI（主推） | 5 |
+| neut-2 | NEUT-2 | Macro Oracle | macro-oracle | NEUT | 0.9 | Claude Sonnet 4 | 6 |
+
+### Canonical Description（UI 展示用，来自 whitepaper analytical lens）
+
+```
+bull-1: "Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data."
+bull-2: "Fundamentals agent tracking TEE adoption, L2 scaling, blockchain fundamentals, and protocol upgrades for a technology-driven bullish read."
+bear-1: "Fundamental analysis agent focusing on news sentiment, regulatory announcements, and social media signals for FUD detection and balanced assessment."
+bear-2: "Global regulatory agent monitoring SEC, EU MiCA, and cross-border policy for downside risk assessment and compliance threat detection."
+neut-1: "Data-driven neutral analysis agent examining on-chain metrics, whale positions, exchange flows, and DeFi TVL for impartial assessment."
+neut-2: "Macro agent weighing interest rates, GDP forecasts, geopolitical risk, and global liquidity for a probabilistic neutral stance."
+```
+
+### 统计字段（保持 mock/agents.ts 现有精确值不变）
+
+| Agent | uptimePct | resolutions | accuracyPct | avgConfidence | region |
+|:-----:|:---------:|:-----------:|:-----------:|:-------------:|:------:|
+| bull-1 | 0.9994 | 4181 | 0.987 | 0.94 | ap-south-1 |
+| bull-2 | 0.9981 | 3240 | 0.964 | 0.89 | eu-west-2 |
+| bear-1 | 0.9999 | 3722 | 0.961 | 0.88 | us-east-1 |
+| bear-2 | 0.9978 | 2890 | 0.974 | 0.91 | eu-central-1 |
+| neut-1 | 0.9967 | 6204 | 0.994 | 0.97 | us-west-2 |
+| neut-2 | 0.9991 | 2114 | 0.981 | 0.93 | ap-northeast-1 |
+
+### KIND_FROM_ROLE 映射（明确设计意图）
+
+```
+exchange-oracle  → "exchange-oracle"  图标 (BULL-1)
+tech-oracle      → "exchange-oracle"  图标 (BULL-2, 同族共用, 看多阵营)
+media-oracle     → "media-oracle"     图标 (BEAR-1)
+regulation-oracle → "media-oracle"    图标 (BEAR-2, 同族共用, 看空阵营)
+onchain-oracle   → "onchain-oracle"   图标 (NEUT-1)
+macro-oracle     → "onchain-oracle"   图标 (NEUT-2, 同族共用, 中性阵营)
 ```
 
 ## 步骤
 
-### Step 1: 创建 `packages/shared/src/agents.ts`（规范配置）
+### Step 0: 确认 canonical design 已定稿 ✅
 
-**文件路径**: `packages/shared/src/agents.ts`
+`spec/10_agent_config_sync/canonical-design.md` 已创建。
 
-定义 `AgentMeta` 类型和 `AGENT_META` 常量数组。这是**唯一编辑点**——未来改 Agent 的名字、描述、模型、权重，只改这里。
+### Step 1: 创建 `packages/shared/src/agents.ts`
+
+定义 `AgentMeta` 类型 + `AGENT_META` 常量数组。包含 6 个 Agent 的所有规范字段。
 
 ```typescript
-import type { Agent } from "./index";
+// packages/shared/src/agents.ts
+import type { Agent, AgentKind } from "./index";
 
-/** Agent 元数据 — 与 AI 层 prompts.ts 同步 */
 export interface AgentMeta {
-  id: string;             // "bull-1"
-  callsign: string;       // "BULL-1"
-  name: string;           // "Exchange Oracle"
-  role: string;           // "exchange-oracle"
-  roleLabel: string;      // "Exchange Oracle"
+  id: string;
+  callsign: string;
+  name: string;
+  role: string;
+  roleLabel: string;
   tier: "active" | "standby";
   stance: "BULL" | "BEAR" | "NEUT";
-  description: string;    // 同义词描述（给 UI/API 用）
-  provider: string;       // 默认 LLM 提供商
-  modelHint: string;      // UI 展示用（如 "Claude 4.7 · B.AI"）
-  weight: number;         // 共识权重
+  description: string;
+  provider: string;
+  modelHint: string;
+  weight: number;
   sortOrder: number;
+  // 统计字段（保持现有精确值）
+  uptimePct: number;
+  resolutions: number;
+  accuracyPct: number;
+  avgConfidence: number;
+  region: string;
 }
 
-/** 6 个 Agent 元数据 — 架构级常量。改 Agent 描述/名字/模型只改这里。 */
 export const AGENT_META: AgentMeta[] = [
   {
     id: "bull-1",
@@ -51,69 +106,142 @@ export const AGENT_META: AgentMeta[] = [
     tier: "active",
     stance: "BULL",
     description: "Technical analysis agent specializing in BTC price trends, trading volume, and HTX order book signals. Provisioned with real-time HTX market data.",
-    provider: "openai",
-    modelHint: "Claude 4.7 · B.AI",
+    provider: "claude",
+    modelHint: "Claude Sonnet 4",
     weight: 1.0,
     sortOrder: 1,
+    uptimePct: 0.9994,
+    resolutions: 4181,
+    accuracyPct: 0.987,
+    avgConfidence: 0.94,
+    region: "ap-south-1",
   },
-  // ... 5 more (same data from prompts.ts + mock)
+  // ... 5 more with actual data from canonical table
 ];
-```
 
-**注意事项**：
-- `description` 字段保持与 `prompts.ts` 的 system prompt 中的身份描述**语义一致**，但不需要拷贝完整 prompt（prompt 是给 LLM 的指令）
-- `weight` 值和 `packages/ai/src/consensus.ts` 或共识逻辑保持一致
-- `AGENT_META` 数组顺序按 sortOrder 排列
+// 明确设计意图：同stance阵营共用图标
+export const KIND_FROM_ROLE: Record<string, AgentKind> = {
+  "exchange-oracle": "exchange-oracle",   // BULL-1
+  "tech-oracle":     "exchange-oracle",   // BULL-2 (BULL family share icon)
+  "media-oracle":    "media-oracle",      // BEAR-1
+  "regulation-oracle": "media-oracle",   // BEAR-2 (BEAR family share icon)
+  "onchain-oracle":  "onchain-oracle",   // NEUT-1
+  "macro-oracle":    "onchain-oracle",   // NEUT-2 (NEUT family share icon)
+};
+```
 
 ### Step 2: 导出 `AgentMeta` 和 `AGENT_META`
 
-**文件路径**: `packages/shared/src/index.ts`
-
-在文件末尾追加：
+`packages/shared/src/index.ts` 末尾追加：
 ```typescript
 export type { AgentMeta } from "./agents";
-export { AGENT_META } from "./agents";
+export { AGENT_META, KIND_FROM_ROLE } from "./agents";
 ```
 
-### Step 3: 创建 DB seeding 脚本
+### Step 3: 替换 `mock/agents.ts`
 
-**文件路径**: `packages/db/scripts/seed-agents.ts`
-
-功能：
-- 从 `@resolve/shared` 导入 `AGENT_META`
-- 对每个 agent，执行 `INSERT INTO agents (...) VALUES (...) ON CONFLICT (agent_id) DO UPDATE SET ...`
-- 支持 `--dry-run` 参数只打印 SQL 不执行
-- 如果 Supabase 不可用，打印清晰提示
+整个替换为从 `AGENT_META` 派生：
 
 ```typescript
-// packages/db/scripts/seed-agents.ts
+import { AGENT_META, KIND_FROM_ROLE } from "@resolve/shared";
+import type { Agent } from "@/lib/types";
+
+export const MOCK_AGENTS: Agent[] = AGENT_META.map((a) => ({
+  id: a.id,
+  callsign: a.callsign,
+  name: a.name,
+  kind: KIND_FROM_ROLE[a.role],
+  description: a.description,
+  modelHint: a.modelHint,
+  region: a.region,
+  uptimePct: a.uptimePct,
+  resolutions: a.resolutions,
+  accuracyPct: a.accuracyPct,
+  avgConfidence: a.avgConfidence,
+  status: "online" as const,
+  tier: a.stance,
+  weight: a.weight,
+}));
+
+export function agentById(id: string) {
+  return MOCK_AGENTS.find((a) => a.id === id);
+}
+```
+
+### Step 4: 替换 `mappers.ts` 中的 `FALLBACK_AGENTS`
+
+将 `FALLBACK_AGENTS` 数组 + `agentFallback()` 函数替换为一个从 `AGENT_META` 派生的 `agentMetaToApiAgent()` 函数：
+
+```typescript
+import { AGENT_META, KIND_FROM_ROLE } from "@resolve/shared";
+// ... keep existing: marketRowToMarket, normalizeSlug, derive8004Id, ApiAgent ...
+
+function agentMetaToApiAgent(meta: typeof AGENT_META[number]): ApiAgent {
+  return {
+    id: meta.id,
+    name: meta.callsign,
+    callsign: meta.callsign,
+    kind: KIND_FROM_ROLE[meta.role],
+    description: meta.description,
+    modelHint: meta.modelHint,
+    region: meta.region,
+    uptimePct: meta.uptimePct,
+    resolutions: meta.resolutions,
+    accuracyPct: meta.accuracyPct,
+    avgConfidence: meta.avgConfidence,
+    status: "online",
+    agentId: meta.id,
+    roleLabel: meta.roleLabel,
+    tier: meta.tier,
+    stance: meta.stance,
+    poweredBy: meta.modelHint,
+    ba8004Id: derive8004Id(meta.id),
+  };
+}
+
+export const FALLBACK_AGENTS: ApiAgent[] = AGENT_META.map(agentMetaToApiAgent);
+
+// 注意：删除旧的 agentFallback() 函数和 hashString-based stats 逻辑
+// 保留 derive8004Id(), deriveStance(), hashString()（其他映射可能还在用）
+```
+
+同时更新 mappers.ts 中的 `agentRowToAgent()` 函数，使其从 `KIND_FROM_ROLE` 读取映射（而不是内联映射对象）。
+
+### Step 5: 创建 DB seeding 脚本
+
+`packages/db/scripts/seed-agents.ts`：
+```typescript
 import { AGENT_META } from "@resolve/shared";
 import { getDb } from "../src/client";
 
 async function seed() {
   const db = getDb();
-  if (!db) { console.error("Supabase not configured"); process.exit(1); }
+  if (!db) {
+    console.error("❌ Supabase not configured. Skipping DB seeding.");
+    process.exit(0);
+  }
   
   for (const agent of AGENT_META) {
-    const { error } = await db.rpc("upsert_agent", {
-      p_agent_id: agent.id,
-      p_name: agent.callsign,
-      p_role: agent.role,
-      p_role_label: agent.roleLabel,
-      p_tier: agent.tier,
-      p_description: agent.description,
-      p_provider: agent.provider,
-      p_powered_by: agent.modelHint,
-      p_sort_order: agent.sortOrder,
-    });
-    if (error) console.error(`Failed to upsert ${agent.id}:`, error);
+    const { error } = await db
+      .from("agents")
+      .upsert({
+        agent_id: agent.id,
+        name: agent.callsign,
+        role: agent.role,
+        role_label: agent.roleLabel,
+        tier: agent.tier,
+        description: agent.description,
+        provider: agent.provider,
+        powered_by: agent.modelHint,
+        sort_order: agent.sortOrder,
+      }, { onConflict: "agent_id" });
+    
+    if (error) console.error(`❌ ${agent.callsign}: ${error.message}`);
     else console.log(`✅ ${agent.callsign} (${agent.name}) synced`);
   }
 }
 seed();
 ```
-
-**可选**：如果不想新增 RPC，可以直接在脚本中用 `db.from('agents').upsert()`。
 
 在 `packages/db/package.json` 中添加：
 ```json
@@ -122,103 +250,19 @@ seed();
     "seed:agents": "tsx scripts/seed-agents.ts"
   }
 }
-```
-
-### Step 4: 替换 `mock/agents.ts`
-
-**文件路径**: `apps/web/lib/mock/agents.ts`
-
-整个文件内容替换为：
-```typescript
-import { AGENT_META } from "@resolve/shared";
-
-export const MOCK_AGENTS = AGENT_META.map((a) => ({
-  id: a.id,
-  callsign: a.callsign,
-  name: a.name,
-  kind: a.role,
-  description: a.description,
-  modelHint: a.modelHint,
-  region: a.role === "exchange-oracle" ? "ap-south-1" : /* deterministic per agent */,
-  uptimePct: /* calculated per agent */,
-  resolutions: /* calculated per agent */,
-  accuracyPct: /* calculated per agent */,
-  avgConfidence: /* calculated per agent */,
-  status: "online" as const,
-  tier: a.stance,
-  weight: a.weight,
-}));
-```
-
-统计字段（uptimePct/resolutions/accuracyPct/avgConfidence/region）保持各 Agent 的确定性值不变（从旧 mock 数据直接搬过来）。不改变 UI 显示。
-
-### Step 5: 替换 `mappers.ts` 中的 `FALLBACK_AGENTS`
-
-**文件路径**: `apps/web/lib/mappers.ts`
-
-将 `FALLBACK_AGENTS` 数组和 `agentFallback()` 函数替换为：
-```typescript
-import { AGENT_META } from "@resolve/shared";
-
-// 将规范配置转为 DB 行格式 + 派生统计字段
-export function agentMetaToApiAgent(meta: typeof AGENT_META[number]): ApiAgent {
-  const seed = hashString(meta.id);
-  const stance = meta.stance;
-  return {
-    id: meta.id,
-    name: meta.callsign,
-    callsign: meta.callsign,
-    kind: KIND_FROM_ROLE[meta.role] ?? "exchange-oracle",
-    description: meta.description,
-    modelHint: meta.modelHint,
-    region: REGIONS[seed % REGIONS.length],
-    uptimePct: UPTIME[meta.id] ?? 0.997 + (seed % 25) / 10000,
-    resolutions: RESOLUTIONS[meta.id] ?? 700 + (seed % 60) * 90,
-    accuracyPct: ACCURACY[meta.id] ?? 0.96 + (seed % 35) / 1000,
-    avgConfidence: CONFIDENCE[meta.id] ?? 0.88 + (seed % 10) / 100,
-    status: "online",
-    agentId: meta.id,
-    roleLabel: meta.roleLabel,
-    tier: meta.tier,
-    stance,
-    poweredBy: meta.modelHint,
-    ba8004Id: derive8004Id(meta.id),
-  };
-}
-
-export const FALLBACK_AGENTS: ApiAgent[] = AGENT_META.map(agentMetaToApiAgent);
-```
-
-保留已有的 `KIND_FROM_ROLE`、`derive8004Id()`、`deriveStance()` 等函数不动。
-
-**注意**：统计字段（uptimePct/resolutions/accuracyPct/avgConfidence）的确定性值需从当前 `FALLBACK_AGENTS` 中提取，确保 UI 数字不变。建议用 `hashString(agentId)` 匹配实现，但为保稳定，可以定义一个 `AGENT_STATS` 常量直接抄当前数值。
 
 ### Step 6: 验证
 
 ```bash
 pnpm typecheck
 pnpm build
+pnpm --filter @resolve/db seed:agents  # 如果 Supabase 已配置
 ```
 
-### Step 7: 执行 DB seeding（可选，配置 Supabase 后执行）
+## 不需要改的
 
-```bash
-pnpm --filter @resolve/db seed:agents
-```
-
-## API 路由现状（不需改）
-
-当前 API 路由已经是对的降级模式：
-```
-/api/agents → DB → FALLBACK_AGENTS（从规范配置生成）
-/api/agents/[id] → DB → FALLBACK_AGENTS
-```
-规范配置更新后，`FALLBACK_AGENTS` 自动从 `AGENT_META` 生成，API 层自动同步。
-
-## 注意事项
-
-- `packages/shared/src/index.ts` 的 `Agent` 接口不变（已有 id/name/callsign/kind/description/modelHint 等字段）
-- `packages/db/migrations/00002_add_agents.sql` 保留不动。脚本是运行时同步机制，不依赖 migration
-- `packages/db/src/types.ts` 的 `AgentRow` 保留不动（DB 查询仍然用这个类型）
-- `packages/db/src/data.ts` 的 `listAgents()` / `getAgentById()` 保留不动（API 路由还在用）
-- AI 层 `prompts.ts` 的 `AGENT_PROFILES` 保留不动。需要保持 description 语义一致但不是代码层面耦合
+- `packages/ai/src/prompts.ts` — system prompt 保留完整人设
+- `apps/web/app/api/agents/route.ts` — 已经是 DB → FALLBACK_AGENTS 降级模式，FALLBACK_AGENTS 更新后自动生效
+- `apps/web/app/api/agents/[id]/route.ts` — 同上
+- `packages/db/migrations/00002_add_agents.sql` — 保留不动
+- `packages/db/src/data.ts` / `types.ts` / `index.ts` — `AgentRow`、`listAgents()`、`getAgentById()` 保留（API 路由还在用）

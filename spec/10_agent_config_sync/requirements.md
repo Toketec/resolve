@@ -1,54 +1,62 @@
-# Spec 10: Agent 配置同步机制 — 统一 6 份分散的 Agent 定义
+# Spec 10: Agent 配置同步机制 — 统一 5 份分散的 Agent 定义
 
 ## 解决什么问题
 
-当前 6 个 Agent 的定义分布在 **5 份不同的拷贝**中，每次修改 Agent 名字、描述、模型配置都需要手动同步，极易遗漏：
+当前 6 个 Agent 的定义分布在 **5 份不同的拷贝**中，且已经出现信息飘移：
 
 ```
 packages/ai/src/prompts.ts           ← AI 层 — 6 个 AGENT_PROFILES（含完整 system prompt）
-apps/web/lib/mock/agents.ts          ← UI 层 mock — MOCK_AGENTS 数组（名字/描述/统计）
-apps/web/lib/mappers.ts              ← API 层 — FALLBACK_AGENTS 数组（名字/描述/DB 字段）
-packages/db/migrations/00002_add_agents.sql  ← DB 层 — SQL INSERT（从未执行/过期）
-packages/shared/src/index.ts         ← 类型层 — Agent 接口定义（无实例数据）
+apps/web/lib/mock/agents.ts          ← UI 层 — MOCK_AGENTS
+apps/web/lib/mappers.ts              ← API 层 — FALLBACK_AGENTS + agentRowToAgent
+packages/db/migrations/00002_add_agents.sql  ← DB 层 — SQL INSERT（从未执行）
+packages/shared/src/index.ts         ← 类型层 — 只有接口无实例
 ```
 
-**核心问题**：修改一个 Agent（如把描述从 "Technical analysis agent..." 改为更准确的内容），需要改 4 处代码，且各层描述已经有飘移（对比 prompts.ts 的 identity 和 mock/agents.ts 的描述，措辞不同）。
+**已发现的漂移**（对比 docs/ 中的规范设计）：
+- **modelHint 全错**：mock 写 "Claude 4.7 · GPT-5"，权威 docs 说 "Claude Sonnet 4"
+- **description 不一致**：bull-2 mock 多了 "Supplements BULL-1…"，bear-1 混入 "macro risks"（应属 NEUT-2），mappers/SQL 缺词
+- **统计字段**：mock 精确定义 6 组值，mappers 用 hash 派生不匹配
+- **KIND_FROM_ROLE 映射**：未明确设计意图
 
-**正确的方向**：6 个 Agent 是系统的架构级常量，应当：
-1. **有一份确切的规范配置**（单源真理）
-2. **数据库作为持久化存储**，方便后期调整和维护部分状态
-3. **各层从同源拉数据**，而非各自维护拷贝
+**设计方案**：
+1. 以 docs/（whitepaper + judge-qa + dev-execution-spec）中的 Agent 设计为**规范**
+2. 创建 `@resolve/shared/agents.ts` 作为**唯一编辑点**，存放 6 个 Agent 的规范配置
+3. mock/agents.ts、mappers.ts 从规范配置派生
+4. 创建 DB seeding 脚本推送至 Supabase agents 表
+
+## 规范配置来源
+
+| 字段 | 来源 |
+|------|------|
+| 名字、role、roleLabel、立场、权重 | `docs/whitepaper.md` §4.2 Agent Taxonomy |
+| 分析视角（description） | 同上 analytical lens 列 |
+| 模型分配 | `docs/ENG/judge-qa.md` 模型分配表 |
+| 统计字段（uptime/resolutions 等） | 沿用当前 mock/agents.ts 的精确值 |
+| 架构设计 | `docs/ENG/architecture-overview.md` §2.3 |
+| role 设计 | `docs/ENG/dev-execution-spec.md` Agent 池表格 |
+
+详见 `spec/10_agent_config_sync/canonical-design.md`
 
 ## 依赖项
 
-- `packages/shared/` — 新建 `packages/shared/src/agents.ts` 规范配置文件
-- `packages/db/src/data.ts` — 已有 `listAgents()` / `getAgentById()` 函数
-- `packages/db/migrations/00002_add_agents.sql` — 已有 agent 表迁移，可以废弃或替换
+- `packages/shared/` — 新建 `packages/shared/src/agents.ts`
+- `packages/db/src/data.ts` — 已有 `listAgents()` / `getAgentById()`（保留）
+- `packages/db/migrations/00002_add_agents.sql` — 保留不动
 - `apps/web/lib/mock/agents.ts` — 改为引用规范配置
 - `apps/web/lib/mappers.ts` — `FALLBACK_AGENTS` 改为引用规范配置
-- `apps/web/app/api/agents/route.ts` — 保持 DB → 规范配置的降级模式
 
 ## 边界说明
 
-- **不做**：修改 AI 层 `prompts.ts` 中 `AGENT_PROFILES` 的 system prompt 内容（那些是 LLM 专用的长文本提示，不属于元数据配置）
-- **不做**：修改 agent 权重和投票逻辑（0.8/0.9/1.0 的权重分配共识层已有）
-- **不做**：新的 UI 页面或视觉样式改动
-- **不做**：删除 mock 数据本身（保留 mock 目录结构，只删除 mock/agents.ts 中的冗余定义）
-- **不做**：修改生产 SQL migration（现有 migration 保留不动）
+- **不做**：修改 prompts.ts 中 AGENT_PROFILES 的 system prompt 内容
+- **不做**：修改 agent 权重和投票逻辑
+- **不做**：新的 UI 页面或视觉改动
+- **不做**：修改 SQL migration 文件
+- **不做**：prompts.ts 的 identity 描述与 UI description 强制统一（AI prompt 可以更详细）
 
-## 设计原则
-
-**单源真理在 `@resolve/shared`**，**持久化在 DB**，**各层从同源拉数据**：
+## 工作流
 
 ```
-@resolve/shared/agents.ts              ← 唯一编辑点
-  ├── DB seeding script                ← 推送至 Supabase agents 表
-  ├── @resolve/shared → mock/agents.ts ← 替换 MOCK_AGENTS
-  ├── @resolve/shared → mappers.ts     ← 替换 FALLBACK_AGENTS
-  └── prompts.ts → 引用 metadata       ← AI 层保留完整 prompt，基本元数据从 canonical 获取
+开发者修改 @resolve/shared/agents.ts  ←── 唯一编辑点
+  → mock/agents.ts、mappers.ts 自动同步（编译时）
+  → pnpm seed:agents 推送至 Supabase（运行时）
 ```
-
-工作流：
-1. 开发者在 `@resolve/shared/agents.ts` 中修改 Agent 配置
-2. 运行 `pnpm seed:agents` 将最新配置 upsert 到 DB
-3. 生产环境 API 从 DB 读取；开发环境从信规范配置降级
