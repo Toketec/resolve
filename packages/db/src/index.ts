@@ -9,6 +9,8 @@ export {
   insertConsensus,
   getConsensusVotes,
   insertVotes,
+  listAgents,
+  getAgentById,
 } from './data';
 
 export type {
@@ -16,5 +18,6 @@ export type {
   PositionRow,
   AgentConsensusRow,
   AgentVoteRow,
+  AgentRow,
   ConsensusOutcome,
 } from './types';

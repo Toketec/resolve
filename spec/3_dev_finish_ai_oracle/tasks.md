@@ -4,18 +4,20 @@
 
 | ID | 任务 | 状态 | 工时 | 备注 |
 |:--:|------|:----:|:----:|------|
-| 3.1 | 安装 `@anthropic-ai/sdk` 依赖到 `@resolve/ai` | ☐ | 5min | |
-| **3.2** | **Prompt 工程 — 6 个 Agent role prompt** 设计：6 个独立 prompt（交易所/媒体/链上/技术/监管/宏观） | ☐ | **3h** | 每个 prompt 含独立人设和证据集 |
-| 3.3 | **精选证据集** — 英雄市场预取证据（HTX价格/新闻/链上/宏观） | ☐ | **1h** | 证据质量决定 Agent 质量 |
-| **3.4** | **Prompt 工程 — BEAR-1 媒体预言机** prompt：人设+推理规则+证据集成+JSON schema | ☐ | **1h** | 偏保守，含新闻预取数据 |
-| **3.5** | **Prompt 工程 — NEUT-1 链上预言机** prompt：人设+推理规则+证据集成+JSON schema | ☐ | **1h** | 中性，含链上数据 |
-| 3.6 | 编写 `evidence.ts` — 精选证据集结构 + 英雄市场预取数据 | ☐ | 1h | |
-| 3.7 | 编写 `llm.ts` — 通用 LLM 调用（Claude SDK + B.AI fetch）+ retry | ☐ | 2h | 支持 provider 切换 |
-| 3.8 | 编写 `consensus.ts` — 加权共识数学（可独立测试） | ☐ | 45min | |
-| **3.9** | **编写 resolveMarket()** — 6 Agent 并行推理（Promise.all），无 selector | ☐ | **2h** | 核心重写，去掉了 orchestrator.selectAgents() |
-| 3.10 | 修改 `index.ts` — resolveMarket 真实实现（6 Agent 并行 → consensus） | ☐ | 30min | 组装全部 |
-| 3.11 | 创建 `.env.example` — 环境变量模板（ANTHROPIC_KEY + BAI_KEY） | ☐ | 5min | |
-| 3.12 | 验证: typecheck + build + select + resolve 全流程 | ☐ | 30min | |
+| 3.1 | 安装 LLM SDK 依赖到 `@resolve/ai` | ☑ | 5min | 用 `openai`（OpenAI 兼容端点 gpt-5.5）替代 Anthropic SDK，见计划决策 |
+| **3.2** | **Prompt 工程 — 6 个 Agent role prompt** 设计：6 个独立 prompt（交易所/媒体/链上/技术/监管/宏观） | ☑ | **3h** | `prompts.ts`：6 人设+温度+统一 JSON 契约+护栏 |
+| 3.3 | **精选证据集** — 英雄市场预取证据（HTX价格/新闻/链上/宏观） | ☑ | **1h** | `evidence.ts`：BTC $150K 按 6 角色分组 |
+| **3.4** | **Prompt 工程 — BEAR-1 媒体预言机** | ☑ | **1h** | 偏保守，含新闻/宏观风险视角 |
+| **3.5** | **Prompt 工程 — NEUT-1 链上预言机** | ☑ | **1h** | 中性，含链上流向/巨鲸数据 |
+| 3.6 | 编写 `evidence.ts` — 精选证据集结构 + 英雄市场预取数据 | ☑ | 1h | |
+| 3.7 | 编写 `llm.ts` — 通用 LLM 调用 + retry | ☑ | 2h | OpenAI 兼容；JSON mode；UA 覆盖绕过 Cloudflare WAF；无 key→mock |
+| 3.8 | 编写 `consensus.ts` — 加权共识数学（可独立测试） | ☑ | 45min | 角色权重 交易所1.0/链上0.9/媒体0.8…阈值0.65 |
+| **3.9** | **编写 resolveMarket()** — 6 Agent 并行推理（Promise.all），无 selector | ☑ | **2h** | `index.ts` 重写，无 orchestrator |
+| 3.10 | 修改 `index.ts` — resolveMarket 真实实现 + 接入 API resolve 路由 | ☑ | 30min | `app/api/markets/[slug]/resolve` 已接真实 resolveMarket |
+| 3.11 | 创建 `.env.example` — 环境变量模板 | ☑ | 5min | `packages/ai/.env.example`（OPENAI_*） |
+| 3.12 | 验证: typecheck + build + resolve 全流程 | ☑ | 30min | 真实 gpt-5.5 跑通：6 票各异、consensus YES~72%、二次稳定、无 key 不崩 |
+
+> 决策：用 OpenAI 兼容端点（gpt-5.5 @ relay）而非 Anthropic，因用户提供该端点。`llm.ts` provider 无关，未来可切回 Claude/B.AI。
 
 ## 验证清单
 

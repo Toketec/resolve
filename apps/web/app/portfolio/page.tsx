@@ -56,11 +56,11 @@ export default function PortfolioPage() {
           </p>
           <div className="mt-5 space-y-2">
             <Row label="Address" value="0x77a8…D8a9F1" />
-            <Row label="Balance" value="2,134.50 USDC" />
+            <Row label="Balance" value="2,134.50 USDD" />
             <Row label="Network" value="HTX · L2" />
           </div>
           <button className="mt-5 w-full rounded-full border-2 border-ink bg-goal-500 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-ink shadow-stamp-sm transition hover:-translate-y-0.5 hover:shadow-stamp">
-            Deposit USDC
+            Deposit USDD
           </button>
         </div>
       </section>

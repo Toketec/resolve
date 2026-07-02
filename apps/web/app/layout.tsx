@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { LiveTicker } from "@/components/live-ticker";
 import { I18nProvider } from "@/components/i18n-provider";
+import { WalletProvider } from "@/components/wallet-provider";
 import { getServerLocale } from "@/lib/i18n/server";
 
 const display = Unbounded({
@@ -43,10 +44,12 @@ export default async function RootLayout({
     >
       <body className="min-h-screen bg-canvas text-ink">
         <I18nProvider initialLocale={locale} initialCountry={country}>
-          <LiveTicker />
-          <SiteNav />
-          <main>{children}</main>
-          <SiteFooter />
+          <WalletProvider>
+            <LiveTicker />
+            <SiteNav />
+            <main>{children}</main>
+            <SiteFooter />
+          </WalletProvider>
         </I18nProvider>
       </body>
     </html>

@@ -12,19 +12,45 @@ import {
   Zap,
   CheckCircle2,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { MarketCard } from "@/components/market-card";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { ConsensusMeter } from "@/components/consensus-meter";
 import { useT } from "@/components/i18n-provider";
 import { MOCK_AGENTS, MOCK_MARKETS } from "@/lib/mock";
+import { fetchMarkets, fetchAgents } from "@/lib/api-client";
 import { cn, formatPct, formatUSD } from "@/lib/utils";
+import type { Market } from "@/lib/types";
 
 export default function LandingPage() {
   const t = useT();
-  const featured = MOCK_MARKETS.filter((m) => m.status === "live").slice(0, 4);
-  const resolving = MOCK_MARKETS.find((m) => m.status === "resolving");
-  const totalVolume = MOCK_MARKETS.reduce((acc, m) => acc + m.volumeUSD, 0);
-  const liveCount = MOCK_MARKETS.filter((m) => m.status === "live").length;
+  // 从 API 读取；失败回退 mock（视觉不变）
+  const [markets, setMarkets] = useState<Market[]>(MOCK_MARKETS);
+  const [agentCallsigns, setAgentCallsigns] = useState<string[]>(
+    MOCK_AGENTS.slice(0, 6).map((a) => a.callsign),
+  );
+
+  useEffect(() => {
+    let active = true;
+    fetchMarkets()
+      .then((m) => {
+        if (active && Array.isArray(m) && m.length) setMarkets(m);
+      })
+      .catch(() => {});
+    fetchAgents()
+      .then((a) => {
+        if (active && Array.isArray(a) && a.length) setAgentCallsigns(a.slice(0, 6).map((x) => x.callsign));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const featured = markets.filter((m) => m.status === "live").slice(0, 4);
+  const resolving = markets.find((m) => m.status === "resolving");
+  const totalVolume = markets.reduce((acc, m) => acc + m.volumeUSD, 0);
+  const liveCount = markets.filter((m) => m.status === "live").length;
 
   return (
     <>
@@ -94,13 +120,13 @@ export default function LandingPage() {
               "CLAUDE 4.7",
               "GPT-5",
               "PRIVY WALLETS",
-              "USDC",
+              "USDD",
               "HTX ECOSYSTEM",
               "B.AI COMPUTE",
               "CLAUDE 4.7",
               "GPT-5",
               "PRIVY WALLETS",
-              "USDC",
+              "USDD",
             ].map((p, i) => (
               <span key={i} className="flex items-center gap-12">
                 <span>{p}</span>
@@ -196,7 +222,7 @@ export default function LandingPage() {
             eyebrow={t("bento.networkEyebrow")}
             title={t("bento.networkTitle")}
             body={t("bento.networkBody")}
-            tags={MOCK_AGENTS.slice(0, 6).map((a) => a.callsign)}
+            tags={agentCallsigns}
           />
           <BentoTile
             bg="bg-card"

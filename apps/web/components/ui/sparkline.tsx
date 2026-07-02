@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -17,6 +18,7 @@ export function Sparkline({
   className,
   invert = false,
 }: Props) {
+  const gradId = useId();
   if (!points.length) return null;
   const pad = 2;
   const xs = points.map((_, i) => (i / (points.length - 1)) * (width - pad * 2) + pad);
@@ -28,7 +30,6 @@ export function Sparkline({
     `${d} L ${xs[xs.length - 1].toFixed(2)} ${height} L ${xs[0].toFixed(2)} ${height} Z`;
 
   const stroke = positive ? "#00B14F" : "#FF2D6F";
-  const gradId = `gr-${Math.random().toString(36).slice(2)}`;
 
   return (
     <svg

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Cpu, Globe2, Newspaper, Radio, ShieldCheck, Activity } from "lucide-react";
 import { MOCK_AGENTS, MOCK_MARKETS } from "@/lib/mock";
+import { fetchAgents, fetchMarkets } from "@/lib/api-client";
 import { formatPct } from "@/lib/utils";
+import type { Agent, Market } from "@/lib/types";
 
 const KIND_ICON: Record<string, React.ReactNode> = {
   "exchange-oracle": <Activity className="size-5" strokeWidth={2.5} />,
@@ -27,8 +29,18 @@ const TONE_BY_INDEX = [
   { bg: "bg-indigo-500", ink: "light" as const },
 ];
 
-export default function AgentsPage() {
-  const recent = MOCK_MARKETS.filter((m) => m.status === "resolved" || m.status === "resolving");
+export default async function AgentsPage() {
+  // 服务端从 API 读取；失败回退 mock（视觉不变）
+  let agents: Agent[] = MOCK_AGENTS;
+  let markets: Market[] = MOCK_MARKETS;
+  try {
+    const [a, m] = await Promise.all([fetchAgents(), fetchMarkets()]);
+    if (Array.isArray(a) && a.length) agents = a;
+    if (Array.isArray(m) && m.length) markets = m;
+  } catch {
+    /* 保持 mock 兜底 */
+  }
+  const recent = markets.filter((m) => m.status === "resolved" || m.status === "resolving");
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
@@ -71,7 +83,7 @@ export default function AgentsPage() {
         </header>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {MOCK_AGENTS.map((a, i) => {
+          {agents.map((a, i) => {
             const tone = TONE_BY_INDEX[i % TONE_BY_INDEX.length];
             const inkClass = tone.ink === "light" ? "text-canvas" : "text-ink";
             const dimClass = tone.ink === "light" ? "text-canvas/80" : "text-ink/70";

@@ -4,12 +4,15 @@
 
 | ID | 任务 | 状态 | 工时 | 备注 |
 |:--:|------|:----:|:----:|------|
-| 6.1 | USDC → USDD 全项目搜索替换 | ☐ | 15min | grep + patch |
-| 6.2 | 投票浮现动画 — ConsensusMeter 改为 staged 模式 | ☐ | 1.5h | 核心改动 |
-| 6.3 | 隐藏"立即解析"触发器 — ?dev=1 + Force Resolve 按钮 | ☐ | 45min | url search param |
-| 6.4 | loading/error 状态 — skeleton + retry + processing 状态 | ☐ | 1h | |
-| 6.5 | resolving 轮询 — 每 3s 轮询 market API 直到 consensus | ☐ | 30min | |
-| 6.6 | 验证: typecheck + build + 浏览器完整流程 | ☐ | 30min | |
+| 6.1 | USDC → USDD 全项目搜索替换 | ☑ | 15min | 7 处全替换（trade-panel/portfolio/create/home ticker） |
+| 6.2 | 投票浮现动画 — staged 模式 | ☑ | 1.5h | `oracle-deliberation.tsx` 逐条浮现(1.2s/条)+`vote-enter` 动画；进度条随票增长 |
+| 6.3 | 隐藏"立即解析"触发器 — ?dev=1 + Force Resolve | ☑ | 45min | window.location 检测；headless 验证 dev 显示/非 dev 隐藏 |
+| 6.4 | loading/error 状态 — skeleton + retry + processing | ☑ | 1h | deliberating 思考态 + retry + buy Processing |
+| 6.5 | resolving 轮询 — 每 3s 轮询直到 consensus | ☑ | 30min | + 自动触发 resolve；轮询作兜底 |
+| 6.6 | 验证: typecheck + build + 浏览器完整流程 | ☑ | 30min | CDP 驱动真实流程：Force Resolve→6 票浮现→共识 68%→x402→settle，0 报错 |
+
+> 🆕 8004 身份卡片（每票，链 Tronscan）+ 🆕 x402 微支付收据（共识后，链 Tronscan）均已实现。
+> 注：真实 gpt-5.5 推理约 57s（deliberating 思考态覆盖等待）；可通过 `OPENAI_MODEL` 换更快模型。
 
 ## 验证清单
 

@@ -55,3 +55,23 @@ export interface AgentVoteRow {
   status: 'active' | 'standby';
   created_at: string;
 }
+
+export interface AgentRow {
+  id: string;
+  agent_id: string;
+  name: string;
+  role: string;
+  role_label: string;
+  tier: 'active' | 'standby';
+  description: string;
+  provider: string;
+  status: 'idle' | 'thinking' | 'voted';
+  confidence: number | null;
+  last_vote: 'YES' | 'NO' | 'ABSTAIN' | null;
+  evidence_summary: string | null;
+  ba_8004_id: string | null;
+  powered_by: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}

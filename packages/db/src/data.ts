@@ -13,6 +13,7 @@ import type {
   PositionRow,
   AgentConsensusRow,
   AgentVoteRow,
+  AgentRow,
 } from './types';
 
 // ── 市场 (markets) ─────────────────────────────────────────
@@ -122,7 +123,6 @@ export async function insertConsensus(
 }
 
 // ── Agent 投票 (agent_votes) ───────────────────────────────────
-
 /** 获取某次共识的所有 Agent 投票 */
 export async function getConsensusVotes(
   consensusId: string,
@@ -148,4 +148,29 @@ export async function insertVotes(
 
   if (error) throw new Error(`Failed to insert votes: ${error.message}`);
   return (data ?? []) as AgentVoteRow[];
+}
+
+// ── Agent 定义 (agents) ────────────────────────────────────────
+
+/** 获取所有 Agent（按 sort_order 排序） */
+export async function listAgents(): Promise<AgentRow[]> {
+  const { data, error } = await getAnyClient()
+    .from('agents')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  if (error) throw new Error(`Failed to list agents: ${error.message}`);
+  return (data ?? []) as AgentRow[];
+}
+
+/** 按 agent_id 获取单个 Agent */
+export async function getAgentById(agentId: string): Promise<AgentRow | null> {
+  const { data, error } = await getAnyClient()
+    .from('agents')
+    .select('*')
+    .eq('agent_id', agentId)
+    .single();
+
+  if (error) return null;
+  return data as AgentRow;
 }

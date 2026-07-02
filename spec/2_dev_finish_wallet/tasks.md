@@ -4,12 +4,14 @@
 
 | ID | 任务 | 状态 | 工时 | 备注 |
 |:--:|------|:----:|:----:|------|
-| 2.1 | 创建 `lib/hooks/useTronWallet.ts` — 封装 TronLink 检测/连接/事件监听 | ☐ | 2h | 核心 hook |
-| 2.2 | 创建 `components/wallet-provider.tsx` — Context Provider | ☐ | 30min | 暴露 useWallet() |
-| 2.3 | 创建 `components/wallet-button.tsx` — 三态 UI 组件 | ☐ | 1h | 未安装/未连接/已连接 |
-| 2.4 | 修改 `components/site-nav.tsx` — 替换 wallet 占位 | ☐ | 30min | |
-| 2.5 | 修改 `app/layout.tsx` — 加 WalletProvider | ☐ | 5min | |
-| 2.6 | 验证: typecheck + build + 浏览器手动测试 | ☐ | 30min | 需要 Chrome + TronLink |
+| 2.1 | 创建 `lib/hooks/useTronWallet.ts` — 封装 TronLink 检测/连接/事件监听 | ☑ | 2h | 检测+轮询注入、tron_requestAccounts、message 事件监听网络/账户变更 |
+| 2.2 | 创建 `components/wallet-provider.tsx` — Context Provider | ☑ | 30min | 暴露 useWallet() |
+| 2.3 | 创建 `components/wallet-button.tsx` — 三态 UI 组件 | ☑ | 1h | 未安装→安装链接 / 未连接→Connect / 已连接→T…xx+网络+复制/断开 |
+| 2.4 | 修改 `components/site-nav.tsx` — 替换 wallet 占位 | ☑ | 30min | |
+| 2.5 | 修改 `app/layout.tsx` — 加 WalletProvider | ☑ | 5min | 包在 I18nProvider 内 |
+| 2.6 | 验证: typecheck + build + 浏览器手动测试 | ◑ | 30min | typecheck/build/lint(我的代码)通过；headless 显示"Install TronLink"；连接流程需 Chrome+TronLink 手测 |
+
+> 附带修复：`components/ui/sparkline.tsx` 用 `useId()` 替换 `Math.random()`（React 纯度 bug，原 lint error）。
 
 ## 验证清单
 
