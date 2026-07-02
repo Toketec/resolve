@@ -133,7 +133,7 @@ export function agentRowToAgent(row: AgentRow): ApiAgent {
   const seed = hashString(row.agent_id);
   return {
     id: row.agent_id,
-    name: row.name,
+    name: row.role_label,
     callsign: row.name,
     kind: row.role as Agent["kind"],
     description: row.description,
