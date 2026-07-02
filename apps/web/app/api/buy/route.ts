@@ -1,6 +1,7 @@
-// POST /api/buy — 买入仓位
-// 数据层真实写入 Supabase positions 表（未配置 → 跳过持久化）；
-// 链上签名部分本阶段 mock（阶段 4 替换为真实合约调用）。
+// POST /api/buy — 买入仓位持久化
+// 前端通过 TronLink 完成 approve + buyShares 后，
+// 拿到真实 txHash，POST 到此路由写入 Supabase。
+// 此路由不做链上调用，仅做数据持久化。
 import { getDb } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ interface BuyBody {
   side: "YES" | "NO";
   amount: number;
   walletAddress: string;
+  txHash: string; // ← 真实链上交易 hash（必传）
 }
 
 export async function POST(req: Request) {
@@ -20,18 +22,27 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { marketId, side, amount, walletAddress } = body;
-  if (!marketId || !side || !amount || !walletAddress) {
+  const { marketId, side, amount, walletAddress, txHash } = body;
+  if (!marketId || !side || !amount || !walletAddress || !txHash) {
     return Response.json(
-      { error: "Missing required fields: marketId, side, amount, walletAddress" },
+      {
+        error:
+          "Missing required fields: marketId, side, amount, walletAddress, txHash",
+      },
       { status: 400 },
     );
   }
   if (side !== "YES" && side !== "NO") {
     return Response.json({ error: "side must be YES or NO" }, { status: 400 });
   }
+  // 校验 txHash 不是 mock 前缀（防止绕过真实合约调用）
+  if (txHash.startsWith("mock_") || txHash.startsWith("sim_")) {
+    return Response.json(
+      { error: "Invalid txHash: mock transaction not accepted" },
+      { status: 400 },
+    );
+  }
 
-  const txHash = `mock_tx_${Date.now().toString(16)}`;
   let id: string | undefined;
 
   const db = getDb();
@@ -46,7 +57,10 @@ export async function POST(req: Request) {
       });
       id = row.id;
     } catch (err) {
-      console.error("[api/buy] Supabase insert failed (returning mock position):", err);
+      console.error(
+        "[api/buy] Supabase insert failed (returning position without id):",
+        err,
+      );
     }
   }
 

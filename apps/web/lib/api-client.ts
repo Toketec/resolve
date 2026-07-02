@@ -75,6 +75,7 @@ export function buyShares(input: {
   side: Outcome;
   amount: number;
   walletAddress: string;
+  txHash: string;
 }): Promise<BuyResponse> {
   return apiPost<BuyResponse>("/api/buy", input);
 }
@@ -91,6 +92,7 @@ export function settle(input: {
   marketId: string;
   outcome: Outcome;
   winnerWallet?: string;
+  payoutSun?: string;
 }): Promise<SettleResponse> {
   return apiPost<SettleResponse>("/api/settle", input);
 }

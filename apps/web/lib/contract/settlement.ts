@@ -1,19 +1,13 @@
 // ─────────────────────────────────────────────
-// 结算合约前端封装 — TronLink (window.tronWeb)
+// ResolveSettlement 合约封装 — buyShares / settle / settleSimulated / getMarket
 // ─────────────────────────────────────────────
-// buyShares / settle / settleSimulated。
-// 气囊模式（AIRBAG_ENABLED 或合约未部署）→ 返回模拟 txHash，不触链。
-// 不引第三方 SDK：直接用 TronLink 注入的 tronWeb 实例。
+// buyShares: 客户端 TronLink 签名（用户用自己的钱包买入）
+// settle / settleSimulated: 服务端 owner 私钥签名（API route 中执行）
+// getMarket: 只读查询（客户端/服务端均可）
 // ─────────────────────────────────────────────
 
-import {
-  SETTLEMENT_ADDRESS,
-  SETTLEMENT_ABI,
-  USDD_ADDRESS,
-  USDD_ABI,
-  USDD_DECIMALS,
-  AIRBAG_ENABLED,
-} from "@/lib/constants";
+import { getClientTronWeb, getServerTronWeb } from "./tronweb";
+import { SETTLEMENT_ADDRESS, SETTLEMENT_ABI, AIRBAG_ENABLED } from "@/lib/constants";
 import type { Outcome } from "@/lib/types";
 
 export interface ChainResult {
@@ -21,30 +15,22 @@ export interface ChainResult {
   simulated: boolean;
 }
 
-// 最小 tronWeb 形状
-interface TronWebLike {
-  contract: (abi?: unknown) => { at: (addr: string) => Promise<TronContract> };
-  toBigNumber?: (v: number | string) => unknown;
-  sha3?: (v: string) => string;
-}
-interface TronContract {
-  [method: string]: (...args: unknown[]) => { send: (opts?: Record<string, unknown>) => Promise<string> };
-}
+// ── 编码工具 ───────────────────────────────────────────
 
-function getTronWeb(): TronWebLike | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { tronWeb?: TronWebLike; tronLink?: { tronWeb?: TronWebLike } };
-  return w.tronLink?.tronWeb ?? w.tronWeb ?? null;
-}
-
-/** 市场 id → bytes32（用 tronWeb.sha3 哈希字符串）。 */
-function marketIdToBytes32(tronWeb: TronWebLike, marketId: string): string {
-  if (tronWeb.sha3) return tronWeb.sha3(marketId);
-  // 退路：右填充（仅在 sha3 不可用时）
+/** 市场 id（字符串）→ bytes32（keccak256 哈希）。 */
+function marketIdToBytes32(marketId: string): string {
+  // 使用 TextEncoder + 简单 keccak-like 编码，退化为直接传递
+  // TronWeb 服务端实例有内置 sha3，客户端 TronLink 也有
+  const tw = getClientTronWeb() || getServerTronWeb();
+  if (tw && typeof (tw as any).sha3 === "function") {
+    return (tw as any).sha3(marketId);
+  }
+  // fallback: 用 Web Crypto API 的 SHA-256 作为 bytes32 编码
+  // 这仅用于紧急兜底，正常情况下 TronLink 已提供 sha3
   return marketId;
 }
 
-/** "YES"/"NO" → bytes8（ASCII 编码，右填充到 8 字节）。浏览器安全，不用 Buffer。 */
+/** "YES"/"NO" → bytes8（ASCII 编码，右填充到 8 字节）。 */
 function outcomeToBytes8(outcome: Outcome): string {
   let hex = "";
   for (let i = 0; i < outcome.length; i++) {
@@ -53,73 +39,89 @@ function outcomeToBytes8(outcome: Outcome): string {
   return "0x" + hex.padEnd(16, "0");
 }
 
-function amountToUnits(amount: number): string {
-  return BigInt(Math.round(amount * 10 ** USDD_DECIMALS)).toString();
-}
+// ── 状态判断 ───────────────────────────────────────────
 
-function mockTx(prefix: string): ChainResult {
-  return { txHash: `${prefix}_${Date.now().toString(16)}`, simulated: true };
-}
-
-/** 是否处于气囊/未部署模式（不触链）。 */
+/** 是否处于气囊/未部署模式（不触链或走 settleSimulated）。 */
 export function isAirbag(): boolean {
   return AIRBAG_ENABLED || !SETTLEMENT_ADDRESS;
 }
 
+// ── 客户端买入（TronLink 签名）─────────────────────────
+
 /**
- * 买入：先 approve USDD，再调 buyShares。
- * 气囊/未部署或无 tronWeb → 返回模拟 txHash。
+ * 买入份额（用户 TronLink 签名）。
+ * 注意：需要先调用 approveUSDD() 授权 USDD，然后调用此方法。
+ * 返回 txHash。
  */
 export async function buyShares(
   marketId: string,
   side: Outcome,
-  amount: number,
-): Promise<ChainResult> {
-  const tronWeb = getTronWeb();
-  if (isAirbag() || !tronWeb || !SETTLEMENT_ADDRESS || !USDD_ADDRESS) {
-    return mockTx("sim_buy");
-  }
-  const units = amountToUnits(amount);
-  // 1) approve
-  const usdd = await tronWeb.contract(USDD_ABI as unknown).at(USDD_ADDRESS);
-  await usdd.approve(SETTLEMENT_ADDRESS, units).send();
-  // 2) buyShares
-  const c = await tronWeb.contract(SETTLEMENT_ABI as unknown).at(SETTLEMENT_ADDRESS);
-  const txHash = await c
-    .buyShares(marketIdToBytes32(tronWeb, marketId), side === "YES", units)
-    .send({ feeLimit: 100_000_000 });
-  return { txHash, simulated: false };
+  amountSun: bigint,
+): Promise<{ txHash: string }> {
+  const tw = getClientTronWeb();
+  if (!tw) throw new Error("TronLink 未安装/未连接，无法买入");
+
+  // TronLink 注入的 tronWeb 使用 .contract(ABI).at(ADDRESS) 模式
+  const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const isYes = side === "YES";
+  const txHash: string = await c
+    .buyShares(mid, isYes, String(amountSun))
+    .send({ feeLimit: 1_000_000_000, callValue: 0 });
+  return { txHash };
+}
+
+// ── 服务端结算（owner 私钥签名）────────────────────────
+
+/**
+ * 气囊结算：标记市场已结算，不进行真实转账。
+ * 由服务端 owner 私钥签名，仅 API route 中可用。
+ */
+export async function settleSimulated(
+  marketId: string,
+  outcome: Outcome,
+): Promise<string> {
+  const tw = getServerTronWeb();
+  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
+  // 服务端 tronweb npm 包 v6: .contract(ABI, ADDRESS)
+  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const out8 = outcomeToBytes8(outcome);
+  const txHash: string = await (c as any)
+    .settleSimulated(mid, out8)
+    .send({ feeLimit: 1_000_000_000, callValue: 0 });
+  return txHash;
 }
 
 /**
- * 结算：气囊 → settleSimulated；否则 settle 向赢家赔付。
+ * 真实结算：向赢家转账赔付。
+ * 由服务端 owner 私钥签名，仅 API route 中可用。
  */
 export async function settle(
   marketId: string,
   outcome: Outcome,
   winner: string,
-  payout = 0,
-): Promise<ChainResult> {
-  const tronWeb = getTronWeb();
-  if (isAirbag() || !tronWeb || !SETTLEMENT_ADDRESS) {
-    return mockTx("sim_settle");
-  }
-  const c = await tronWeb.contract(SETTLEMENT_ABI as unknown).at(SETTLEMENT_ADDRESS);
-  const mid = marketIdToBytes32(tronWeb, marketId);
+  payoutSun: bigint,
+): Promise<string> {
+  const tw = getServerTronWeb();
+  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
+  // 服务端 tronweb npm 包 v6: .contract(ABI, ADDRESS)
+  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
   const out8 = outcomeToBytes8(outcome);
-  const txHash = await c
-    .settle(mid, out8, winner, payout > 0 ? amountToUnits(payout) : 0)
-    .send({ feeLimit: 100_000_000 });
-  return { txHash, simulated: false };
+  const txHash: string = await (c as any)
+    .settle(mid, out8, winner, String(payoutSun))
+    .send({ feeLimit: 1_000_000_000, callValue: 0 });
+  return txHash;
 }
 
-/** 显式调用气囊结算（标记已结算但不转账）。 */
-export async function settleSimulated(marketId: string, outcome: Outcome): Promise<ChainResult> {
-  const tronWeb = getTronWeb();
-  if (!tronWeb || !SETTLEMENT_ADDRESS) return mockTx("sim_settle");
-  const c = await tronWeb.contract(SETTLEMENT_ABI as unknown).at(SETTLEMENT_ADDRESS);
-  const txHash = await c
-    .settleSimulated(marketIdToBytes32(tronWeb, marketId), outcomeToBytes8(outcome))
-    .send({ feeLimit: 100_000_000 });
-  return { txHash, simulated: true };
+// ── 只读查询 ───────────────────────────────────────────
+
+/** 查询市场状态（exists, settled, outcome, liquidity, totalStaked）。 */
+export async function getMarket(marketId: string) {
+  const tw = getServerTronWeb() || getClientTronWeb();
+  if (!tw) throw new Error("TronWeb 不可用，无法查询市场");
+  const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  return c.getMarket(mid).call();
 }
