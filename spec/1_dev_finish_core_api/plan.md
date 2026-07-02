@@ -202,8 +202,8 @@ curl -X POST http://localhost:3000/api/settle -H 'Content-Type: application/json
 
 ## 注意事项
 
-- ⚡ **Supabase 连接**：`apps/web` 使用环境变量 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`（或 `NEXT_PUBLIC_SUPABASE_ANON_KEY`）
-- ⚡ **ENV 文件**：`apps/web/.env.local` 需要包含 `SUPABASE_URL` 和 `SUPABASE_SERVICE_ROLE_KEY`。如果没有 `SERVICE_ROLE_KEY`，用 `NEXT_PUBLIC_SUPABASE_ANON_KEY` 加 `SUPABASE_ANON_KEY`
+- ⚡ **Supabase 连接**：`apps/web` 使用环境变量 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`（或 `SUPABASE_ANON_KEY`）
+- ⚡ **ENV 文件**：`apps/web/.env.local` 需要包含 `SUPABASE_URL` 和 `SUPABASE_SERVICE_ROLE_KEY`。如果没有 `SERVICE_ROLE_KEY`，用 `SUPABASE_ANON_KEY`
 - ⚡ **URL 符号映射**：HTX API 使用 `btcusdd` 格式（小写无分隔符），前端会传 `BTC`。API Route 中拼接时注意转换
 - Next.js 16 App Router 中 route handler 使用 `export async function GET()`
 - `params` 在 Next.js 16 中是 Promise 类型: `{ params }: { params: Promise<{ slug: string }> }`

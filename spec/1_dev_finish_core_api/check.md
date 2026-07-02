@@ -18,7 +18,7 @@ status: pending
 | # | 条件 | 检查方法 |
 |:-:|------|----------|
 | P1 | `pnpm install` 已执行，node_modules 完整 | `ls node_modules/.pnpm/lock.yaml` |
-| P2 | `.env.local` 已配置 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`（或 `NEXT_PUBLIC_SUPABASE_ANON_KEY`） | `grep SUPABASE .env.local` |
+| P2 | `.env.local` 已配置 `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`（或 `SUPABASE_ANON_KEY`） | `grep SUPABASE .env.local` |
 | P3 | Supabase 迁移 `00001_initial_schema.sql` 已执行 | Dashboard SQL Editor 确认 `markets` 表存在 |
 | P4 | Supabase 迁移 `00002_add_agents.sql` 已执行 | Dashboard SQL Editor 确认 `agents` 表存在且有 6 条种子数据 |
 | P5 | 开发服务器已启动，终端无报错 | `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/markets` 返回 `200` |
