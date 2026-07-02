@@ -116,3 +116,13 @@ Each spec dir (`spec/N/`) contains 4 files:
 
 - Consensus threshold: 0.65
 - All 6 Agents are ACTIVE — no STANDBY tier
+
+### Agent 命名说明
+
+| 前缀 | 含义 | 偏向量级 |
+|:----:|:----:|:--------:|
+| **BULL** | 看多（bullish） → 倾向 YES | 2 票 |
+| **BEAR** | 看空（bearish） → 倾向 NO | 2 票 |
+| **NEUT** | 中性（neutral）  → 数据驱动 | 2 票 |
+
+命名直接借用传统金融的多/空/中三分法，让评委和用户 15 秒理解架构 —— 每个前缀有 -1/-2 两个 Agent，保证 6 票各有独立推理视角，而非单一 Agent 代表全部分析。
