@@ -13,7 +13,7 @@ import * as db from "@resolve/db";
 
 /** Supabase 是否已通过环境变量配置 */
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.SUPABASE_URL;
   const key =
     process.env.SUPABASE_SERVICE_KEY ||
     process.env.SUPABASE_ANON_KEY ||

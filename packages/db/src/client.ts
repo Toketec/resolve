@@ -25,19 +25,19 @@ let serviceClient: SupabaseClient | null = null;
  * 获取匿名客户端
  *
  * 环境变量来源（优先级从高到低）:
- *   NEXT_PUBLIC_SUPABASE_URL → SUPABASE_URL
- *   NEXT_PUBLIC_SUPABASE_ANON_KEY → SUPABASE_ANON_KEY
+ *   SUPABASE_URL
+ *   SUPABASE_ANON_KEY
  */
 export function getAnonClient(): SupabaseClient {
   if (anonClient) return anonClient;
 
-  const url = env('NEXT_PUBLIC_SUPABASE_URL') || env('SUPABASE_URL');
-  const key = env('NEXT_PUBLIC_SUPABASE_ANON_KEY') || env('SUPABASE_ANON_KEY');
+  const url = env('SUPABASE_URL');
+  const key = env('SUPABASE_ANON_KEY');
 
   if (!url || !key) {
     throw new Error(
       'Supabase 未配置。请在 .env.local 中设置 ' +
-      'SUPABASE_URL / SUPABASE_ANON_KEY（或 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY）'
+      'SUPABASE_URL / SUPABASE_ANON_KEY'
     );
   }
 
