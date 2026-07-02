@@ -3,7 +3,6 @@
 ## 自检
 
 ```bash
-cd /home/wst1/王圣滔/C主要项目/resolve
 pnpm typecheck
 pnpm build
 ```

@@ -3,7 +3,7 @@
 ## AI 自检
 
 ```bash
-cd /home/wst1/王圣滔/C主要项目/resolve
+# 在项目根目录执行
 
 # 1. 类型检查
 pnpm typecheck
