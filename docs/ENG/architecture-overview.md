@@ -325,6 +325,42 @@ Phase                     User Does         Agent Does                  System D
 - 评委的评分维度明确包含「AI/Web3 应用程度」
 - \$HTX 质押/Agent 激励需要在链上产生可信的经济循环
 
+### ADR-006（赛后优化）: Event 驱动索引器替代 API 双写
+
+**当前方案（Hackathon 阶段）**: `POST /api/buy` 在用户 TronLink 签名后，将 txHash + 元数据写入 Supabase `positions` 表。数据来源是**前端 POST**，有被伪造的风险（虽然 txHash 本身可在 Tronscan 验证）。
+
+**优化方案（赛后）**: 合约 emit `PositionChanged` event → 轻量索引器监听链上事件 → 自动写入 DB。
+
+```solidity
+// ResolveSettlement.sol 新增 event
+event PositionChanged(
+    bytes32 indexed marketId,
+    address indexed buyer,
+    bool isYes,
+    uint256 amount,
+    uint256 shares
+);
+```
+
+```typescript
+// 索引器（定时任务，每 30s 扫最新区块）
+async function indexEvents() {
+  const latestBlock = await tronWeb.trx.getCurrentBlock();
+  // 从上次扫描区块到最新区块之间，找出 buyShares 交易的 event logs
+  // 解析 event → 写入 positions 表
+}
+```
+
+**为什么现在不做**:
+1. Hackathon 时间线不允许搭建索引器基础设施
+2. 当前 `tx_hash` 字段已提供可验证的链上证据（Tronscan 链接）
+3. Demo 场景下用户不会伪造自己的买入记录
+
+**优化后收益**:
+- 数据来源从前端 POST 变为**链上 events 解析** → 不可篡改
+- 新增 `PositionChanged` event 让链上可查询所有用户持仓历史
+- 与纯链上查询方案相比，索引器保证前端毫秒级响应
+
 ---
 
 ## 8. 模块依赖图

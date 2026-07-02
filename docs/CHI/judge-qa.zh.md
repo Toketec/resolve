@@ -191,6 +191,33 @@ Step 3 ── 结果写入 Supabase + UI 逐条动画展示
 - 评分维度明确包含「AI/Web3 应用程度」
 - \$HTX 质押 + Agent 激励需要在链上产生可信经济循环
 
+### Q: 持仓数据靠前端 POST 写入 DB，怎么保证数据可信？
+
+**这是一个很好的问题，也是我们赛后优化的方向。**
+
+当前方案的信任链：
+
+```
+用户 TronLink 签名 buyShares() → 真实链上交易 ✅
+  → 拿到真实 txHash（可在 Tronscan 验证）
+  → POST txHash + 元数据到 /api/buy → Supabase positions 表
+```
+
+**信任锚**：`txHash` 是可验证的链上证据——任何人可打开 `shasta.tronscan.org` 搜索这个 hash 确认交易存在。前端只是读取缓存。
+
+**赛后优化方向**：Event 驱动索引器。给合约加 `PositionChanged` event，跑定时任务每 30 秒扫链上最新区块的 event logs → 自动写入 DB。这样数据来源从前端 POST 变为链上 events 解析，**任何人都无法伪造**。
+
+```
+合约 emit PositionChanged(marketId, buyer, side, amount)  ✅ 不可篡改
+  → 索引器监听 event → 自动写入 DB
+  → 前端毫秒级读取
+```
+
+**为什么现在不做**：
+1. Hackathon 2 周时间不够搭建索引器
+2. tx_hash 字段已提供可验证的链上证据链
+3. Demo 场景下用户不会伪造自己的买入记录
+
 ---
 
 ## 四、\$HTX 经济模型（盈利模式）
