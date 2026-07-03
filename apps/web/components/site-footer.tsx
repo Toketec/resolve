@@ -43,7 +43,7 @@ export function SiteFooter() {
             { href: "https://htxdao-1.gitbook.io/htx-genesis-hackathon", label: "Genesis hackathon", external: true },
           ]} />
           <Col title={t("footer.team")} tone="text-magenta-700" items={[
-            { href: "https://x.com/resolve_prediction", label: t("footer.xTwitter"), external: true },
+            { href: "https://x.com/resolvemarket", label: t("footer.xTwitter"), external: true },
             { href: privacyHref, label: t("footer.privacy"), external: true },
           ]} />
         </div>

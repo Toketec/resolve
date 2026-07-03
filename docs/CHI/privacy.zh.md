@@ -141,7 +141,7 @@ RESOLVE 由开发团队为 HTX Genesis 黑客松制作。
 
 隐私相关问题请联系：
 - **GitHub**：[仓库链接]
-- **X/Twitter**：[@resolve_prediction]
+- **X/Twitter**：[@resolvemarket](https://x.com/resolvemarket)
 
 我们力争在 7 个工作日内回复隐私相关请求。
 

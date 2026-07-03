@@ -141,7 +141,7 @@ RESOLVE is built by a team of developers for the HTX Genesis Hackathon.
 
 For privacy-related inquiries:
 - **GitHub**: [repository link]
-- **X/Twitter**: [@resolve_prediction]
+- **X/Twitter**: [@resolvemarket](https://x.com/resolvemarket)
 
 We aim to respond to privacy requests within 7 business days.
 
