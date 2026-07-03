@@ -64,6 +64,7 @@ export interface BuyResponse {
   side: Outcome;
   shares: number;
   amount: number;
+  price?: number;
   txHash: string;
   walletAddress: string;
   status: string;
@@ -74,10 +75,37 @@ export function buyShares(input: {
   marketId: string;
   side: Outcome;
   amount: number;
+  shares?: number;
+  price?: number;
   walletAddress: string;
   txHash: string;
 }): Promise<BuyResponse> {
   return apiPost<BuyResponse>("/api/buy", input);
+}
+
+export interface SellResponse {
+  id: string;
+  marketId: string;
+  side: Outcome;
+  shares: number;
+  usddAmount: number;
+  price: number;
+  txHash: string;
+  walletAddress: string;
+  status: string;
+  persisted: boolean;
+}
+
+export function sellShares(input: {
+  marketId: string;
+  side: Outcome;
+  shares: number;
+  usddAmount: number;
+  price: number;
+  walletAddress: string;
+  txHash: string;
+}): Promise<SellResponse> {
+  return apiPost<SellResponse>("/api/sell", input);
 }
 
 export interface SettleResponse {

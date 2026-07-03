@@ -73,16 +73,21 @@ export default function CreateMarketPage() {
     try {
       const liqNum = Number(liquidity);
       let txHash: string | undefined;
+      const creationFeeUSDD = 10; // 10 USDD 创建费
+      const totalNeeded = liqNum + creationFeeUSDD;
 
       // === 先上链（如果钱包已连接且有流动性）===
       if (wallet.connected && liqNum > 0) {
         const amountSun = usddToSun(liqNum);
+        const totalSun = usddToSun(totalNeeded);
 
         // 检查 USDD 余额
         try {
           const bal = await usddBalanceOf(wallet.address);
-          if (bal < amountSun) {
-            throw new Error(`USDD 余额不足，需要 ${liquidity} USDD`);
+          if (bal < totalSun) {
+            throw new Error(
+              `USDD 余额不足，需要 ${totalNeeded} USDD（流动性 ${liquidity} + 创建费 ${creationFeeUSDD}）`,
+            );
           }
         } catch (balErr) {
           throw new Error(
@@ -90,11 +95,11 @@ export default function CreateMarketPage() {
           );
         }
 
-        // Approve USDD
+        // Approve USDD（流动性 + 创建费）
         setDeployStep("approving");
-        await approveUSDD(SETTLEMENT_ADDRESS, amountSun);
+        await approveUSDD(SETTLEMENT_ADDRESS, totalSun);
 
-        // Create market on-chain
+        // Create market on-chain（合约内部会拉取 liquidity + 10 USDD 创建费）
         setDeployStep("deploying");
         const result = await createMarket(slug, amountSun);
         txHash = result.txHash;
@@ -288,6 +293,14 @@ export default function CreateMarketPage() {
                   className="font-display w-full rounded-2xl border-2 border-ink bg-canvas px-4 py-4 text-3xl font-black text-ink outline-none focus:bg-card"
                 />
               </Field>
+              <div className="rounded-2xl border-2 border-ink bg-magenta-100 px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-magenta-700">
+                  Creation fee: 10 USDD
+                </p>
+                <p className="mt-1 text-xs font-semibold text-ink/70">
+                  Creating a market costs 10 USDD (paid once on deploy). Together with your liquidity deposit, you'll need {liquidity ? `${Number(liquidity) + 10} USDD` : "liquidity + 10 USDD"} total.
+                </p>
+              </div>
               <div className="rounded-2xl border-2 border-ink bg-goal-500 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-ink">Why this matters</p>
                 <p className="mt-2 text-sm font-semibold text-ink/85">
@@ -315,6 +328,8 @@ export default function CreateMarketPage() {
               <Summary label="Threshold" value={`${threshold}%`} />
               <Summary label="Expires" value={expiry} />
               <Summary label="Seed liquidity" value={`${liquidity || 0} USDD`} />
+              <Summary label="Creation fee" value="10 USDD" />
+              <Summary label="Total needed" value={`${liquidity ? (Number(liquidity) + 10) + ' USDD' : '—'}`} />
             </div>
           )}
 

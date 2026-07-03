@@ -29,7 +29,16 @@ export const SETTLEMENT_ABI = [
     inputs: [
       { name: "marketId", type: "bytes32" },
       { name: "isYes", type: "bool" },
-      { name: "amount", type: "uint256" },
+      { name: "amountSun", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function", name: "sellShares", stateMutability: "nonpayable",
+    inputs: [
+      { name: "marketId", type: "bytes32" },
+      { name: "isYes", type: "bool" },
+      { name: "shares", type: "uint256" },
     ],
     outputs: [],
   },
@@ -60,6 +69,23 @@ export const SETTLEMENT_ABI = [
     outputs: [],
   },
   {
+    type: "function", name: "claimMarketFees", stateMutability: "nonpayable",
+    inputs: [{ name: "marketId", type: "bytes32" }],
+    outputs: [],
+  },
+  {
+    type: "function", name: "getPoolState", stateMutability: "view",
+    inputs: [{ name: "marketId", type: "bytes32" }],
+    outputs: [
+      { name: "yesSupply", type: "uint256" },
+      { name: "noSupply", type: "uint256" },
+      { name: "yesPrice", type: "uint256" },
+      { name: "noPrice", type: "uint256" },
+      { name: "liquidity", type: "uint256" },
+      { name: "feePool", type: "uint256" },
+    ],
+  },
+  {
     type: "function", name: "getMarket", stateMutability: "view",
     inputs: [{ name: "marketId", type: "bytes32" }],
     outputs: [
@@ -67,7 +93,9 @@ export const SETTLEMENT_ABI = [
       { name: "settled", type: "bool" },
       { name: "outcome", type: "bytes8" },
       { name: "liquidity", type: "uint256" },
-      { name: "totalStaked", type: "uint256" },
+      { name: "yesSupply", type: "uint256" },
+      { name: "noSupply", type: "uint256" },
+      { name: "feePool", type: "uint256" },
     ],
   },
 ] as const;

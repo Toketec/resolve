@@ -71,9 +71,10 @@ async function main() {
   console.log("\n──────────────── 部署完成 ────────────────");
   console.log(`USDD:               ${usdd}`);
   console.log(`ResolveSettlement:  ${settlement}`);
-  console.log("\n下一步: 把地址填入 apps/web/lib/constants.ts");
-  console.log(`  USDD_ADDRESS = "${usdd}"`);
-  console.log(`  SETTLEMENT_ADDRESS = "${settlement}"`);
+    console.log("\n下一步: 把地址填入 apps/web/.env.local 或 lib/constants.ts");
+    console.log(`  NEXT_PUBLIC_USDD_ADDRESS = "${usdd}"`);
+    console.log(`  NEXT_PUBLIC_SETTLEMENT_ADDRESS = "${settlement}"`);
+    console.log(`\n创建费 10 USDD 将从部署者钱包扣除（含在 createMarket() 中）。`);
 }
 
 main().catch((e) => {

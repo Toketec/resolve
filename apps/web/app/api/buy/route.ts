@@ -2,6 +2,7 @@
 // 前端通过 TronLink 完成 approve + buyShares 后，
 // 拿到真实 txHash，POST 到此路由写入 Supabase。
 // 此路由不做链上调用，仅做数据持久化。
+// v2: 使用 positions 余额模型（yes_balance / no_balance）+ trades 表。
 import { getDb } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +11,10 @@ interface BuyBody {
   marketId: string;
   side: "YES" | "NO";
   amount: number;
+  shares?: number;
+  price?: number;
   walletAddress: string;
-  txHash: string; // ← 真实链上交易 hash（必传）
+  txHash: string;
 }
 
 export async function POST(req: Request) {
@@ -22,7 +25,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { marketId, side, amount, walletAddress, txHash } = body;
+  const { marketId, side, amount, shares: rawShares, price: rawPrice, walletAddress, txHash } = body;
   if (!marketId || !side || !amount || !walletAddress || !txHash) {
     return Response.json(
       {
@@ -35,7 +38,6 @@ export async function POST(req: Request) {
   if (side !== "YES" && side !== "NO") {
     return Response.json({ error: "side must be YES or NO" }, { status: 400 });
   }
-  // 校验 txHash 不是 mock 前缀（防止绕过真实合约调用）
   if (txHash.startsWith("mock_") || txHash.startsWith("sim_")) {
     return Response.json(
       { error: "Invalid txHash: mock transaction not accepted" },
@@ -43,37 +45,60 @@ export async function POST(req: Request) {
     );
   }
 
-  let id: string | undefined;
+  const numAmount = Number(amount);
+  const buyShares = rawShares !== undefined ? Number(rawShares) : numAmount; // fallback 1:1
+  const buyPrice = rawPrice !== undefined ? Number(rawPrice) : 0.5;
+  const fee = numAmount * 0.001;
+  const platformFee = fee / 2;
 
   const db = getDb();
+  let tradeId: string | undefined;
+
   if (db) {
     try {
-      const row = await db.insertPosition({
+      // 1) 查询当前持仓余额
+      const pos = await db.getPosition(marketId, walletAddress);
+      const currentYes = pos?.yes_balance ?? 0;
+      const currentNo = pos?.no_balance ?? 0;
+      const currentBought = pos?.total_bought ?? 0;
+
+      // 2) 更新持仓余额
+      await db.updatePosition({
+        market_id: marketId,
+        wallet_address: walletAddress,
+        yes_balance: side === "YES" ? currentYes + buyShares : currentYes,
+        no_balance: side === "NO" ? currentNo + buyShares : currentNo,
+        total_bought: currentBought + buyShares,
+      });
+
+      // 3) 写入 trades 表
+      const trade = await db.insertTrade({
         market_id: marketId,
         wallet_address: walletAddress,
         side,
-        amount: Number(amount),
+        type: "buy",
+        shares: buyShares,
+        price: buyPrice,
+        usdd_amount: numAmount,
+        fee: platformFee,
         tx_hash: txHash,
       });
-      id = row.id;
+      tradeId = trade.id;
     } catch (err) {
-      console.error(
-        "[api/buy] Supabase insert failed (returning position without id):",
-        err,
-      );
+      console.error("[api/buy] DB write failed:", err);
     }
   }
 
-  // shares 简化为 1:1（demo），真实下注份额由合约定价
   return Response.json({
-    id: id ?? `pos_${Date.now().toString(16)}`,
+    id: tradeId ?? `buy_${Date.now().toString(16)}`,
     marketId,
     side,
-    shares: Number(amount),
-    amount: Number(amount),
+    shares: buyShares,
+    amount: numAmount,
+    price: buyPrice,
     txHash,
     walletAddress,
     status: "confirmed",
-    persisted: Boolean(id),
+    persisted: Boolean(tradeId),
   });
 }

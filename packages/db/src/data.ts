@@ -11,6 +11,7 @@ import { getAnyClient } from './client';
 import type {
   MarketRow,
   PositionRow,
+  TradeRow,
   AgentConsensusRow,
   AgentVoteRow,
   AgentRow,
@@ -77,9 +78,9 @@ export async function updateMarket(
   if (error) throw new Error(`Failed to update market: ${error.message}`);
 }
 
-// ── 仓位 (positions) ─────────────────────────────────────────
+// ── 仓位 (positions) — 余额模型 ──────────────────────────────────
 
-/** 获取某市场下某钱包的仓位 */
+/** 获取某市场下某钱包的仓位（余额） */
 export async function getPosition(
   marketId: string,
   walletAddress: string,
@@ -95,7 +96,7 @@ export async function getPosition(
   return data as PositionRow;
 }
 
-/** 按钱包地址获取该钱包下所有持仓（按创建时间倒序） */
+/** 按钱包地址获取该钱包下所有持仓 */
 export async function listPositionsByWallet(
   walletAddress: string,
 ): Promise<PositionRow[]> {
@@ -109,7 +110,7 @@ export async function listPositionsByWallet(
   return (data ?? []) as PositionRow[];
 }
 
-/** 获取某市场下所有仓位（含关联 market 信息，按时间倒序） */
+/** 获取某市场下所有仓位 */
 export async function listPositionsByMarket(
   marketId: string,
 ): Promise<PositionRow[]> {
@@ -123,22 +124,128 @@ export async function listPositionsByMarket(
   return (data ?? []) as PositionRow[];
 }
 
-/** 记录新仓位 */
-export async function insertPosition(input: {
+/**
+ * 更新持仓余额（买入或卖出后）。
+ * 使用 upsert，如果该 (market_id, wallet_address) 行不存在则创建。
+ */
+export async function updatePosition(input: {
   market_id: string;
   wallet_address: string;
-  side: 'YES' | 'NO';
-  amount: number;
-  tx_hash?: string;
+  yes_balance?: number;
+  no_balance?: number;
+  total_bought?: number;
+  total_sold?: number;
 }): Promise<PositionRow> {
+  // 先查询是否已存在
+  const existing = await getPosition(input.market_id, input.wallet_address);
+
+  if (existing) {
+    const updates: Record<string, number> = {};
+    if (input.yes_balance !== undefined) updates.yes_balance = input.yes_balance;
+    if (input.no_balance !== undefined) updates.no_balance = input.no_balance;
+    if (input.total_bought !== undefined) updates.total_bought = input.total_bought;
+    if (input.total_sold !== undefined) updates.total_sold = input.total_sold;
+
+    const { data, error } = await getAnyClient()
+      .from('positions')
+      .update(updates)
+      .eq('market_id', input.market_id)
+      .eq('wallet_address', input.wallet_address)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update position: ${error.message}`);
+    return data as PositionRow;
+  }
+
+  // 不存在 → 插入新行
   const { data, error } = await getAnyClient()
     .from('positions')
-    .insert(input)
+    .insert({
+      market_id: input.market_id,
+      wallet_address: input.wallet_address,
+      yes_balance: input.yes_balance ?? 0,
+      no_balance: input.no_balance ?? 0,
+      total_bought: input.total_bought ?? 0,
+      total_sold: input.total_sold ?? 0,
+    })
     .select()
     .single();
 
   if (error) throw new Error(`Failed to insert position: ${error.message}`);
   return data as PositionRow;
+}
+
+/** 获取某市场下单个钱包的持仓余额（直接查余额） */
+export async function getBalance(
+  marketId: string,
+  walletAddress: string,
+): Promise<{ yesBalance: number; noBalance: number }> {
+  const pos = await getPosition(marketId, walletAddress);
+  return {
+    yesBalance: pos?.yes_balance ?? 0,
+    noBalance: pos?.no_balance ?? 0,
+  };
+}
+
+// ── 交易记录 (trades) ────────────────────────────────────────
+
+/** 插入一条交易记录 */
+export async function insertTrade(input: {
+  market_id: string;
+  wallet_address: string;
+  side: 'YES' | 'NO';
+  type: 'buy' | 'sell';
+  shares: number;
+  price: number;
+  usdd_amount: number;
+  fee?: number;
+  tx_hash?: string;
+}): Promise<TradeRow> {
+  const { data, error } = await getAnyClient()
+    .from('trades')
+    .insert({
+      ...input,
+      fee: input.fee ?? 0,
+      tx_hash: input.tx_hash ?? '',
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to insert trade: ${error.message}`);
+  return data as TradeRow;
+}
+
+/** 按市场获取交易历史（按时间倒序） */
+export async function listTradesByMarket(
+  marketId: string,
+  limit = 20,
+): Promise<TradeRow[]> {
+  const { data, error } = await getAnyClient()
+    .from('trades')
+    .select('*')
+    .eq('market_id', marketId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(`Failed to list trades by market: ${error.message}`);
+  return (data ?? []) as TradeRow[];
+}
+
+/** 按钱包获取交易历史 */
+export async function listTradesByWallet(
+  walletAddress: string,
+  limit = 50,
+): Promise<TradeRow[]> {
+  const { data, error } = await getAnyClient()
+    .from('trades')
+    .select('*')
+    .eq('wallet_address', walletAddress)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(`Failed to list trades by wallet: ${error.message}`);
+  return (data ?? []) as TradeRow[];
 }
 
 // ── 共识 (agent_consensus) ─────────────────────────────────────

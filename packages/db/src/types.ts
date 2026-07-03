@@ -19,8 +19,24 @@ export interface PositionRow {
   id: string;
   market_id: string;
   wallet_address: string;
+  yes_balance: number;
+  no_balance: number;
+  total_bought: number;
+  total_sold: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TradeRow {
+  id: string;
+  market_id: string;
+  wallet_address: string;
   side: 'YES' | 'NO';
-  amount: number;
+  type: 'buy' | 'sell';
+  shares: number;
+  price: number;
+  usdd_amount: number;
+  fee: number;
   tx_hash: string;
   created_at: string;
 }

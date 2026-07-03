@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────
-// ResolveSettlement 合约封装 — buyShares / settle / settleSimulated / getMarket
+// ResolveSettlement 合约封装 — buyShares / sellShares / settle / getPoolState / claimFees
 // ─────────────────────────────────────────────
-// buyShares: 客户端 TronLink 签名（用户用自己的钱包买入）
-// settle / settleSimulated: 服务端 owner 私钥签名（API route 中执行）
-// getMarket: 只读查询（客户端/服务端均可）
+// buyShares / sellShares: 客户端 TronLink 签名（用户用自己的钱包交易）
+// createMarket: 客户端 TronLink 签名（创建者支付 L USDD 流动性 + 10 USDD 创建费）
+// settle / settleSimulated / claimMarketFees: 服务端 owner 私钥签名
+// getMarket / getPoolState: 只读查询（客户端/服务端均可）
 // ─────────────────────────────────────────────
 
 import { getClientTronWeb, getServerTronWeb } from "./tronweb";
@@ -46,11 +47,12 @@ export function isAirbag(): boolean {
   return AIRBAG_ENABLED || !SETTLEMENT_ADDRESS;
 }
 
-// ── 客户端买入（TronLink 签名）─────────────────────────
+// ── 客户端交易（TronLink 签名）─────────────────────
 
 /**
  * 创建链上市场 + 注资流动性（客户端 TronLink 签名）。
- * 注意：需先调用 approveUSDD() 授权后调用此方法。
+ * 合约内部会从 creator 拉取 (liquiditySun + 10 USDD 创建费)。
+ * 注意：需先调用 approveUSDD() 授权 (liquiditySun + 10_000_000) 后调用此方法。
  * 返回 txHash。
  */
 export async function createMarket(
@@ -89,6 +91,30 @@ export async function buyShares(
   const isYes = side === "YES";
   const txHash: string = await c
     .buyShares(mid, isYes, String(amountSun))
+    .send({ feeLimit: 1_000_000_000, callValue: 0, ...(from ? { from } : {}) });
+  return { txHash };
+}
+
+/**
+ * 卖出份额（用户 TronLink 签名）。
+ * 注意：需要持仓份额充足（stakes 映射中记录）。
+ * 合约内部会按 AMM 价格返还 USDD 并扣 0.1% 费。
+ * 返回 txHash。
+ */
+export async function sellShares(
+  marketId: string,
+  side: Outcome,
+  sharesSun: bigint,
+): Promise<{ txHash: string }> {
+  const tw = getClientTronWeb();
+  if (!tw) throw new Error("TronLink 未安装/未连接，无法卖出");
+
+  const from = tw.defaultAddress?.base58;
+  const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const isYes = side === "YES";
+  const txHash: string = await c
+    .sellShares(mid, isYes, String(sharesSun))
     .send({ feeLimit: 1_000_000_000, callValue: 0, ...(from ? { from } : {}) });
   return { txHash };
 }
@@ -139,11 +165,54 @@ export async function settle(
 
 // ── 只读查询 ───────────────────────────────────────────
 
-/** 查询市场状态（exists, settled, outcome, liquidity, totalStaked）。 */
+/** 查询市场状态（exists, settled, outcome, liquidity, yesSupply, noSupply, feePool）。 */
 export async function getMarket(marketId: string) {
   const tw = getServerTronWeb() || getClientTronWeb();
   if (!tw) throw new Error("TronWeb 不可用，无法查询市场");
   const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
   const mid = marketIdToBytes32(marketId);
   return c.getMarket(mid).call();
+}
+
+/** 查询池状态（yesSupply, noSupply, yesPrice, noPrice, liquidity, feePool）。 */
+export async function getPoolState(marketId: string): Promise<{
+  yesSupply: bigint;
+  noSupply: bigint;
+  yesPrice: bigint;
+  noPrice: bigint;
+  liquidity: bigint;
+  feePool: bigint;
+}> {
+  const tw = getServerTronWeb() || getClientTronWeb();
+  if (!tw) throw new Error("TronWeb 不可用，无法查询池状态");
+  const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const result = await c.getPoolState(mid).call();
+
+  // TronWeb 合约调用返回的可能是数组或对象
+  const arr = Array.isArray(result) ? result : Object.values(result);
+  return {
+    yesSupply: BigInt(String(arr[0])),
+    noSupply: BigInt(String(arr[1])),
+    yesPrice: BigInt(String(arr[2])),
+    noPrice: BigInt(String(arr[3])),
+    liquidity: BigInt(String(arr[4])),
+    feePool: BigInt(String(arr[5])),
+  };
+}
+
+// ── 服务端费用提取 ────────────────────────────────────
+
+/**
+ * 提取指定市场的平台费（owner 私钥签名，仅服务端可用）。
+ */
+export async function claimMarketFees(marketId: string): Promise<string> {
+  const tw = getServerTronWeb();
+  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
+  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const txHash: string = await (c as any)
+    .claimMarketFees(mid)
+    .send({ feeLimit: 1_000_000_000, callValue: 0 });
+  return txHash;
 }
