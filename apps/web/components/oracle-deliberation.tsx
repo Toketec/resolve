@@ -326,7 +326,7 @@ export function OracleDeliberation({
             ) : (
               <div className="flex items-center justify-between rounded-2xl border-2 border-ink bg-pitch-50 px-4 py-3">
                 <p className="font-score text-[11px] font-black uppercase tracking-wider text-ink">
-                  Settled {settleTx.simulated ? "(airbag)" : ""} · {display?.outcome}
+                  Settled · {display?.outcome}
                 </p>
                 <a
                   href={`${TRONSCAN_SHASTA}/#/transaction/${settleTx.txHash}`}

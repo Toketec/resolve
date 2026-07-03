@@ -283,6 +283,37 @@ contract ResolveSettlement {
         emit SettledSimulated(marketId, outcome);
     }
 
+    /// @notice 批量结算：向多个赢家赔付。owner 调用，仅一次。
+    /// @param marketId  市场 ID（bytes32）
+    /// @param outcome   结算结果（YES → 0x5945530000000000 / NO → 0x4e4f0000000000）
+    /// @param winners   赢家地址数组
+    /// @param payouts   对应赔付金额数组（最小单位 sun）
+    function settleBatch(
+        bytes32 marketId,
+        bytes8 outcome,
+        address[] calldata winners,
+        uint256[] calldata payouts
+    ) external onlyOwner {
+        Market storage m = markets[marketId];
+        require(m.exists, "Resolve: no market");
+        require(!m.settled, "Resolve: settled");
+        require(winners.length == payouts.length, "Resolve: length mismatch");
+        require(winners.length > 0, "Resolve: empty winners");
+
+        m.settled = true;
+        m.outcome = outcome;
+
+        uint256 totalPayout = 0;
+        for (uint i = 0; i < winners.length; i++) {
+            if (payouts[i] > 0 && winners[i] != address(0)) {
+                require(usdd.transfer(winners[i], payouts[i]), "Resolve: payout failed");
+                totalPayout += payouts[i];
+            }
+        }
+
+        emit Settled(marketId, outcome, winners[0], totalPayout);
+    }
+
     // ── 只读查询 ──────────────────────────────────────────────
 
     /** 查询市场基本状态 */

@@ -13,7 +13,7 @@
 
 | 成员 | 角色 | 联系方式 |
 |------|------|---------|
-| **Tony Wang** | 项目负责人 · AI × Web3 资深技术专家 | Flykites PTE LTD（新加坡） |
+| **Tony Wang** | 项目联合创始人 · AI × Web3 资深技术专家 | Flykites PTE LTD（新加坡） |
 | 待定 | Dev A — 链上合约与结算 | — |
 | 待定 | Dev B — AI 预言机与路演 | — |
 | 待定 | Dev C — 应用、数据与集成 | — |

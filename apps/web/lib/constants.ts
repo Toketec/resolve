@@ -69,6 +69,16 @@ export const SETTLEMENT_ABI = [
     outputs: [],
   },
   {
+    type: "function", name: "settleBatch", stateMutability: "nonpayable",
+    inputs: [
+      { name: "marketId", type: "bytes32" },
+      { name: "outcome", type: "bytes8" },
+      { name: "winners", type: "address[]" },
+      { name: "payouts", type: "uint256[]" },
+    ],
+    outputs: [],
+  },
+  {
     type: "function", name: "claimMarketFees", stateMutability: "nonpayable",
     inputs: [{ name: "marketId", type: "bytes32" }],
     outputs: [],

@@ -201,6 +201,28 @@ export async function getPoolState(marketId: string): Promise<{
   };
 }
 
+/**
+ * 批量结算：向多个赢家转账赔付。
+ * 由服务端 owner 私钥签名，仅 API route 中可用。
+ */
+export async function settleBatch(
+  marketId: string,
+  outcome: Outcome,
+  winners: string[],
+  payouts: bigint[],
+): Promise<string> {
+  const tw = getServerTronWeb();
+  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
+
+  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const out8 = outcomeToBytes8(outcome);
+  const txHash: string = await (c as any)
+    .settleBatch(mid, out8, winners, payouts.map(String))
+    .send({ feeLimit: 10_000_000_000, callValue: 0 });
+  return txHash;
+}
+
 // ── 服务端费用提取 ────────────────────────────────────
 
 /**

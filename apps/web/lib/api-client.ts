@@ -114,6 +114,9 @@ export interface SettleResponse {
   txHash: string;
   paidOut: boolean;
   simulated: boolean;
+  winnerCount?: number;
+  totalPayout?: string;
+  note?: string;
 }
 
 export function settle(input: {

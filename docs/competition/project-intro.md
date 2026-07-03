@@ -13,7 +13,7 @@
 
 | Member | Role | Contact |
 |--------|------|---------|
-| **Tony Wang** | Project Lead · AI × Web3 Senior Architect | Flykites PTE LTD (Singapore) |
+| **Tony Wang** | Project CO-Founder · AI × Web3 Senior Architect | Flykites PTE LTD (Singapore) |
 | TBD | Dev A — Chain & Settlement Contract | — |
 | TBD | Dev B — AI Oracle & Pitch | — |
 | TBD | Dev C — App, Data & Integration | — |
