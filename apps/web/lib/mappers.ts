@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────
 
 import type { Market, Agent, MarketStatus, Outcome, PricePoint } from "@/lib/types";
-import type { MarketRow, AgentRow } from "@resolve/db";
+import type { MarketRow, AgentRow, PoolStateRow } from "@resolve/db";
 import { MOCK_MARKETS } from "@/lib/mock";
 
 // ── status 枚举映射 ───────────────────────────────────────────
@@ -65,12 +65,15 @@ function hashString(str: string): number {
  * 派生值补齐，使 UI 渲染与原 mock 形状完全一致。若某 slug 恰好在 mock 中存在，
  * 优先复用 mock 的展示值（让英雄市场视觉稳定）。
  */
-export function marketRowToMarket(row: MarketRow): Market {
+export function marketRowToMarket(row: MarketRow, poolState?: PoolStateRow | null): Market {
   const fromMock = MOCK_MARKETS.find(
     (m) => m.slug === row.slug || m.slug === normalizeSlug(row.slug),
   );
   const seed = hashString(row.slug);
-  const yesPrice = fromMock?.yesPrice ?? 0.5 + ((seed % 40) - 20) / 100; // 0.30–0.70
+  // 优先使用 DB 池状态真实价格，否则回退 mock 派生值
+  const yesPrice = poolState
+    ? Number(poolState.yes_price)
+    : (fromMock?.yesPrice ?? 0.5 + ((seed % 40) - 20) / 100);
   const expiresAt = row.expires_at ?? fromMock?.expiresAt ?? new Date().toISOString();
   const end = Math.floor(new Date(expiresAt).getTime() / 1000);
   const status = mapStatus(row.status);
@@ -91,7 +94,9 @@ export function marketRowToMarket(row: MarketRow): Market {
     resolvedAt: status === "resolved" ? row.updated_at : fromMock?.resolvedAt,
     yesPrice,
     volumeUSD: fromMock?.volumeUSD ?? 1_000_000 + (seed % 9) * 480_000,
-    liquidityUSD: fromMock?.liquidityUSD ?? 100_000 + (seed % 7) * 60_000,
+    liquidityUSD: poolState
+      ? Number(poolState.liquidity) / 1e6
+      : (fromMock?.liquidityUSD ?? 100_000 + (seed % 7) * 60_000),
     traders: fromMock?.traders ?? 400 + (seed % 50) * 80,
     history: fromMock?.history ?? generateHistory(seed, end, yesPrice),
     creator: fromMock?.creator ?? { name: "resolve.eth", address: "TR9ZDVVStpH5BgzqSqUYqyZgMYPRmvQGkp" },

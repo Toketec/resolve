@@ -3,6 +3,7 @@
 // 拿到真实 txHash，POST 到此路由写入 Supabase。
 // 此路由不做链上调用，仅做数据持久化。
 import { getDb } from "@/lib/supabase-server";
+import { refreshPoolStateInBackground } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,9 @@ export async function POST(req: Request) {
       );
     }
   }
+
+  // 异步刷新池状态（不阻塞响应，失败静默丢弃）
+  refreshPoolStateInBackground(marketId).catch(() => {});
 
   return Response.json({
     id: tradeId ?? `sell_${Date.now().toString(16)}`,

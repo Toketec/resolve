@@ -9,6 +9,7 @@ import { OracleDeliberation } from "@/components/oracle-deliberation";
 import { marketBySlug, MOCK_TRADES } from "@/lib/mock";
 import { MOCK_AGENTS } from "@/lib/mock/agents";
 import { fetchMarket, fetchAgents, fetchMarketTrades } from "@/lib/api-client";
+import { getPoolState } from "@/lib/contract/settlement";
 import { derive8004Id, type ApiAgent } from "@/lib/mappers";
 import { formatPct, formatRelative, formatUSD, shortAddr } from "@/lib/utils";
 import { TRONSCAN_SHASTA } from "@/lib/constants";
@@ -36,6 +37,15 @@ export default async function MarketDetailPage({ params }: PageProps) {
   // 从 API 读取市场；失败回退 mock（视觉不变）
   let market: Market | undefined;
   let agents: ApiAgent[] = mockToApi();
+  let poolState: {
+    yesPrice: number;
+    noPrice: number;
+    yesSupply: bigint;
+    noSupply: bigint;
+    liquidity: bigint; // USDD sun (6 decimals)
+    feePool: bigint;   // USDD sun (6 decimals)
+  } | null = null;
+
   try {
     const [m, a] = await Promise.all([fetchMarket(slug), fetchAgents()]);
     market = m;
@@ -45,8 +55,35 @@ export default async function MarketDetailPage({ params }: PageProps) {
   }
   if (!market) notFound();
 
+  // 尝试从链上获取实时 AMM 池状态（仅 live 市场）
+  if (market.status === "live") {
+    try {
+      const pool = await getPoolState(slug);
+      const PRICE_DECIMALS = BigInt("1000000000000000000"); // 1e18
+      poolState = {
+        yesPrice: Number(pool.yesPrice) / Number(PRICE_DECIMALS),
+        noPrice:  Number(pool.noPrice)  / Number(PRICE_DECIMALS),
+        yesSupply: pool.yesSupply,
+        noSupply:  pool.noSupply,
+        liquidity: pool.liquidity,
+        feePool:   pool.feePool,
+      };
+    } catch {
+      // 链上查询失败 → 保持 mock/DB 数据
+    }
+  }
+
+  // 使用链上价格 + 流动性覆盖 mock 数据
+  const displayMarket: Market = poolState
+    ? {
+        ...market,
+        yesPrice: poolState.yesPrice,
+        liquidityUSD: Number(poolState.liquidity) / 1e6,
+      }
+    : market;
+
   const trades = await fetchMarketTrades(slug).catch(() =>
-    MOCK_TRADES.filter((t) => t.marketId === market.id).slice(0, 8),
+    MOCK_TRADES.filter((t) => t.marketId === displayMarket.id).slice(0, 8),
   );
 
   return (
@@ -55,8 +92,8 @@ export default async function MarketDetailPage({ params }: PageProps) {
       <nav className="font-score flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-muted">
         <Link href="/markets" className="hover:text-ink">/ markets</Link>
         <span>·</span>
-        <Link href={`/markets?category=${market.category}`} className="hover:text-ink">
-          {market.category}
+        <Link href={`/markets?category=${displayMarket.category}`} className="hover:text-ink">
+          {displayMarket.category}
         </Link>
       </nav>
 
@@ -64,35 +101,51 @@ export default async function MarketDetailPage({ params }: PageProps) {
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
-            <CategoryChip category={market.category} size="md" />
-            <StatusChip status={market.status} />
+            <CategoryChip category={displayMarket.category} size="md" />
+            <StatusChip status={displayMarket.status} />
+            {poolState && (
+              <span className="inline-flex items-center gap-1 rounded-full border-2 border-ink bg-goal-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink">
+                ● live chain
+              </span>
+            )}
             <span className="font-score text-[11px] font-bold uppercase tracking-wider text-muted">
-              expires {formatRelative(market.expiresAt)}
+              expires {formatRelative(displayMarket.expiresAt)}
             </span>
           </div>
           <h1 className="font-display mt-4 text-4xl font-black uppercase leading-[0.95] tracking-tight text-ink sm:text-5xl">
-            {market.title}
+            {displayMarket.title}
           </h1>
-          <p className="mt-4 max-w-2xl text-base font-medium text-ink/75">{market.description}</p>
+          <p className="mt-4 max-w-2xl text-base font-medium text-ink/75">{displayMarket.description}</p>
         </div>
         <div className="grid w-full max-w-md grid-cols-2 gap-3">
-          <KPI label="Volume" value={formatUSD(market.volumeUSD, { compact: true })} />
-          <KPI label="Liquidity" value={formatUSD(market.liquidityUSD, { compact: true })} />
-          <KPI label="Traders" value={market.traders.toLocaleString()} />
-          <KPI
-            label={market.status === "resolved" ? "Outcome" : "YES price"}
-            value={market.status === "resolved" ? market.resolvedOutcome ?? "—" : formatPct(market.yesPrice)}
-            accent={market.yesPrice >= 0.5 ? "#00B14F" : "#FF2D6F"}
-          />
+          {poolState ? (
+            <>
+              <KPI label="YES price" value={formatPct(poolState.yesPrice)} accent={poolState.yesPrice >= 0.5 ? "#00B14F" : "#FF2D6F"} />
+              <KPI label="NO price" value={formatPct(poolState.noPrice)} accent={poolState.noPrice >= 0.5 ? "#00B14F" : poolState.noPrice > 0.3 ? "#0A0A0A" : "#FF2D6F"} />
+              <KPI label="Liquidity" value={formatUSD(Number(poolState.liquidity) / 1e6, { compact: true })} />
+              <KPI label="Pool fees" value={formatUSD(Number(poolState.feePool) / 1e6, { compact: true })} />
+            </>
+          ) : (
+            <>
+              <KPI label="Volume" value={formatUSD(displayMarket.volumeUSD, { compact: true })} />
+              <KPI label="Liquidity" value={formatUSD(displayMarket.liquidityUSD, { compact: true })} />
+              <KPI label="Traders" value={displayMarket.traders.toLocaleString()} />
+              <KPI
+                label={displayMarket.status === "resolved" ? "Outcome" : "YES price"}
+                value={displayMarket.status === "resolved" ? displayMarket.resolvedOutcome ?? "—" : formatPct(displayMarket.yesPrice)}
+                accent={displayMarket.yesPrice >= 0.5 ? "#00B14F" : "#FF2D6F"}
+              />
+            </>
+          )}
         </div>
       </div>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-6">
-          <PriceChart history={market.history} yesPrice={market.yesPrice} />
+          <PriceChart history={displayMarket.history} yesPrice={displayMarket.yesPrice} />
 
           {/* Consensus + Agent votes (interactive: force resolve, staged reveal, x402) */}
-          <OracleDeliberation market={market} agents={agents} />
+          <OracleDeliberation market={displayMarket} agents={agents} />
 
           {/* Resolution criteria */}
           <section className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">
@@ -103,7 +156,7 @@ export default async function MarketDetailPage({ params }: PageProps) {
               <FileText className="size-3.5 text-muted" />
             </div>
             <div className="p-5">
-              <p className="text-sm font-medium text-ink/85">{market.resolutionCriteria}</p>
+              <p className="text-sm font-medium text-ink/85">{displayMarket.resolutionCriteria}</p>
             </div>
           </section>
 
@@ -163,7 +216,7 @@ export default async function MarketDetailPage({ params }: PageProps) {
 
         {/* Sidebar */}
         <aside className="space-y-6">
-          <TradePanel market={market} />
+          <TradePanel market={displayMarket} />
 
           <div className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">
             <div className="border-b-2 border-ink bg-raised px-4 py-3">
@@ -172,29 +225,29 @@ export default async function MarketDetailPage({ params }: PageProps) {
               </p>
             </div>
             <div className="divide-y-2 divide-line">
-              <Row label="Created" value={formatRelative(market.createdAt)} />
-              <Row label="Expires" value={formatRelative(market.expiresAt)} />
-              <Row label="Creator" value={market.creator.name} sub={shortAddr(market.creator.address)} />
-              {market.settlementTxHash && (
+              <Row label="Created" value={formatRelative(displayMarket.createdAt)} />
+              <Row label="Expires" value={formatRelative(displayMarket.expiresAt)} />
+              <Row label="Creator" value={displayMarket.creator.name} sub={shortAddr(displayMarket.creator.address)} />
+              {displayMarket.settlementTxHash && (
                 <div className="flex items-center justify-between px-4 py-3">
                   <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
                     Deployment
                   </p>
                   <a
-                    href={`${TRONSCAN_SHASTA}/#/transaction/${market.settlementTxHash}`}
+                    href={`${TRONSCAN_SHASTA}/#/transaction/${displayMarket.settlementTxHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group flex items-center gap-1 text-right"
                   >
                     <p className="text-sm font-semibold text-ink underline decoration-line underline-offset-2 group-hover:text-pitch-700 transition">
-                      {shortAddr(market.settlementTxHash)}
+                      {shortAddr(displayMarket.settlementTxHash)}
                     </p>
                     <ExternalLink className="size-3 text-muted group-hover:text-ink transition" />
                   </a>
                 </div>
               )}
-              <Row label="Category" value={market.category} />
-              <Row label="Threshold" value={`${Math.round((market.consensus?.threshold ?? 0.65) * 100)}%`} />
+              <Row label="Category" value={displayMarket.category} />
+              <Row label="Threshold" value={`${Math.round((displayMarket.consensus?.threshold ?? 0.65) * 100)}%`} />
             </div>
           </div>
 

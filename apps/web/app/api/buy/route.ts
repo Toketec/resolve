@@ -4,6 +4,7 @@
 // 此路由不做链上调用，仅做数据持久化。
 // v2: 使用 positions 余额模型（yes_balance / no_balance）+ trades 表。
 import { getDb } from "@/lib/supabase-server";
+import { refreshPoolStateInBackground } from "@/lib/api-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,9 @@ export async function POST(req: Request) {
       console.error("[api/buy] DB write failed:", err);
     }
   }
+
+  // 异步刷新池状态（不阻塞响应，失败静默丢弃）
+  refreshPoolStateInBackground(marketId).catch(() => {});
 
   return Response.json({
     id: tradeId ?? `buy_${Date.now().toString(16)}`,

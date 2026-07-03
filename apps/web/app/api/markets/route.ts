@@ -13,7 +13,10 @@ export async function GET() {
     try {
       const rows = await db.listMarkets();
       if (rows.length > 0) {
-        return Response.json(rows.map(marketRowToMarket));
+        // 批量查询所有市场的池状态 → 一次性 JOIN
+        const marketIds = rows.map((r) => r.id);
+        const poolStates = await db.listLatestPoolStates(marketIds);
+        return Response.json(rows.map((row) => marketRowToMarket(row, poolStates.get(row.id))));
       }
     } catch (err) {
       console.error("[api/markets] Supabase read failed, falling back to mock:", err);

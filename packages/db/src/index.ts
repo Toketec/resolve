@@ -2,6 +2,7 @@ export { getAnonClient, getServiceClient, getAnyClient } from './client';
 export {
   listMarkets,
   getMarketBySlug,
+  getMarketById,
   insertMarket,
   updateMarket,
   getPosition,
@@ -18,6 +19,9 @@ export {
   insertVotes,
   listAgents,
   getAgentById,
+  upsertPoolState,
+  getPoolStateByMarketId,
+  listLatestPoolStates,
 } from './data';
 
 export type {
@@ -27,5 +31,6 @@ export type {
   AgentConsensusRow,
   AgentVoteRow,
   AgentRow,
+  PoolStateRow,
   ConsensusOutcome,
 } from './types';

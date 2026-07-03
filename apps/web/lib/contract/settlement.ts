@@ -7,7 +7,7 @@
 // getMarket / getPoolState: 只读查询（客户端/服务端均可）
 // ─────────────────────────────────────────────
 
-import { getClientTronWeb, getServerTronWeb } from "./tronweb";
+import { getClientTronWeb, getServerTronWeb, getReadOnlyTronWeb } from "./tronweb";
 import { SETTLEMENT_ADDRESS, SETTLEMENT_ABI, AIRBAG_ENABLED } from "@/lib/constants";
 import type { Outcome } from "@/lib/types";
 
@@ -20,14 +20,11 @@ export interface ChainResult {
 
 /** 市场 id（字符串）→ bytes32（keccak256 哈希）。 */
 function marketIdToBytes32(marketId: string): string {
-  // 使用 TextEncoder + 简单 keccak-like 编码，退化为直接传递
-  // TronWeb 服务端实例有内置 sha3，客户端 TronLink 也有
-  const tw = getClientTronWeb() || getServerTronWeb();
-  if (tw && typeof (tw as any).sha3 === "function") {
+  const tw = getReadOnlyTronWeb();
+  if (typeof (tw as any).sha3 === "function") {
     return (tw as any).sha3(marketId);
   }
-  // fallback: 用 Web Crypto API 的 SHA-256 作为 bytes32 编码
-  // 这仅用于紧急兜底，正常情况下 TronLink 已提供 sha3
+  // fallback
   return marketId;
 }
 
@@ -167,8 +164,7 @@ export async function settle(
 
 /** 查询市场状态（exists, settled, outcome, liquidity, yesSupply, noSupply, feePool）。 */
 export async function getMarket(marketId: string) {
-  const tw = getServerTronWeb() || getClientTronWeb();
-  if (!tw) throw new Error("TronWeb 不可用，无法查询市场");
+  const tw = getReadOnlyTronWeb();
   const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
   const mid = marketIdToBytes32(marketId);
   return c.getMarket(mid).call();
@@ -183,8 +179,7 @@ export async function getPoolState(marketId: string): Promise<{
   liquidity: bigint;
   feePool: bigint;
 }> {
-  const tw = getServerTronWeb() || getClientTronWeb();
-  if (!tw) throw new Error("TronWeb 不可用，无法查询池状态");
+  const tw = getReadOnlyTronWeb();
   const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
   const mid = marketIdToBytes32(marketId);
   const result = await c.getPoolState(mid).call();
@@ -237,4 +232,36 @@ export async function claimMarketFees(marketId: string): Promise<string> {
     .claimMarketFees(mid)
     .send({ feeLimit: 1_000_000_000, callValue: 0 });
   return txHash;
+}
+
+// ── 工具函数 ────────────────────────────────────────────
+
+/** 合约内部价格精度：1e18，供应量单位：Sun */
+const PRICE_DECIMALS = BigInt("1000000000000000000"); // 1e18
+
+export interface NormalizedPoolState {
+  yesPrice: number;
+  noPrice: number;
+  yesSupply: string;
+  noSupply: string;
+  liquidity: string;
+  feePool: string;
+}
+
+/**
+ * 将 getPoolState() 的链上 BigInt 返回值归一化为 DB 可存储的类型。
+ * yesPrice/noPrice = BigInt / 1e18 → number (0–1)
+ * 供应量/流动性/费池保持 Sun 单位字符串（避免精度丢失）。
+ */
+export function normalizePoolState(
+  pool: Awaited<ReturnType<typeof getPoolState>>,
+): NormalizedPoolState {
+  return {
+    yesPrice: Number(pool.yesPrice) / Number(PRICE_DECIMALS),
+    noPrice: Number(pool.noPrice) / Number(PRICE_DECIMALS),
+    yesSupply: pool.yesSupply.toString(),
+    noSupply: pool.noSupply.toString(),
+    liquidity: pool.liquidity.toString(),
+    feePool: pool.feePool.toString(),
+  };
 }

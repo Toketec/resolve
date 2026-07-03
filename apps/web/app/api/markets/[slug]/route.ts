@@ -14,7 +14,11 @@ export async function GET(
   if (db) {
     try {
       const row = await db.getMarketBySlug(slug);
-      if (row) return Response.json(marketRowToMarket(row));
+      if (row) {
+        // 优先读 DB 池状态
+        const poolState = await db.getPoolStateByMarketId(row.id);
+        return Response.json(marketRowToMarket(row, poolState));
+      }
     } catch (err) {
       console.error(`[api/markets/${slug}] Supabase read failed, falling back:`, err);
     }

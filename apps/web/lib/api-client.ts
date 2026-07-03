@@ -157,3 +157,4 @@ export function fetchTrades(wallet: string): Promise<Trade[]> {
 export function fetchMarketTrades(slug: string): Promise<Trade[]> {
   return apiGet<Trade[]>(`/api/markets/${encodeURIComponent(slug)}/trades`);
 }
+

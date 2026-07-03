@@ -93,3 +93,16 @@ export interface AgentRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface PoolStateRow {
+  id: string;
+  market_id: string;
+  yes_price: number;
+  no_price: number;
+  yes_supply: string;
+  no_supply: string;
+  liquidity: string;
+  fee_pool: string;
+  source: string;
+  updated_at: string;
+}

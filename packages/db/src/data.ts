@@ -15,6 +15,7 @@ import type {
   AgentConsensusRow,
   AgentVoteRow,
   AgentRow,
+  PoolStateRow,
 } from './types';
 
 // ── 市场 (markets) ─────────────────────────────────────────
@@ -36,6 +37,18 @@ export async function getMarketBySlug(slug: string): Promise<MarketRow | null> {
     .from('markets')
     .select('*')
     .eq('slug', slug)
+    .single();
+
+  if (error) return null;
+  return data as MarketRow;
+}
+
+/** 按 id 获取单个市场 */
+export async function getMarketById(id: string): Promise<MarketRow | null> {
+  const { data, error } = await getAnyClient()
+    .from('markets')
+    .select('*')
+    .eq('id', id)
     .single();
 
   if (error) return null;
@@ -331,4 +344,71 @@ export async function getAgentById(agentId: string): Promise<AgentRow | null> {
 
   if (error) return null;
   return data as AgentRow;
+}
+
+// ── 池状态 (market_pool_states) ─────────────────────────────────
+
+/** 插入或更新某市场的池状态（基于 market_id UNIQUE 约束 upsert）。 */
+export async function upsertPoolState(input: {
+  market_id: string;
+  yes_price: number;
+  no_price: number;
+  yes_supply: string;
+  no_supply: string;
+  liquidity: string;
+  fee_pool: string;
+  source?: string;
+}): Promise<PoolStateRow> {
+  const { data, error } = await getAnyClient()
+    .from('market_pool_states')
+    .upsert({
+      market_id: input.market_id,
+      yes_price: input.yes_price,
+      no_price: input.no_price,
+      yes_supply: input.yes_supply,
+      no_supply: input.no_supply,
+      liquidity: input.liquidity,
+      fee_pool: input.fee_pool,
+      source: input.source ?? 'chain',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'market_id' })
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to upsert pool state: ${error.message}`);
+  return data as PoolStateRow;
+}
+
+/** 获取某个市场的池状态。 */
+export async function getPoolStateByMarketId(
+  marketId: string,
+): Promise<PoolStateRow | null> {
+  const { data, error } = await getAnyClient()
+    .from('market_pool_states')
+    .select('*')
+    .eq('market_id', marketId)
+    .single();
+
+  if (error) return null;
+  return data as PoolStateRow;
+}
+
+/** 批量获取指定市场的池状态，返回 market_id → PoolStateRow 的 Map。 */
+export async function listLatestPoolStates(
+  marketIds: string[],
+): Promise<Map<string, PoolStateRow>> {
+  if (marketIds.length === 0) return new Map();
+
+  const { data, error } = await getAnyClient()
+    .from('market_pool_states')
+    .select('*')
+    .in('market_id', marketIds);
+
+  if (error) throw new Error(`Failed to list pool states: ${error.message}`);
+
+  const map = new Map<string, PoolStateRow>();
+  for (const row of (data ?? []) as PoolStateRow[]) {
+    map.set(row.market_id, row);
+  }
+  return map;
 }
