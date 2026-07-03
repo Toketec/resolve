@@ -51,7 +51,10 @@ export default function LandingPage() {
   }, []);
 
   const featured = markets.filter((m) => m.status === "live").slice(0, 4);
-  const resolving = markets.find((m) => m.status === "resolving");
+  // 始终回退到 mock 的 resolving 市场，保证 Hero 第三张卡片永久展示
+  const resolving =
+    markets.find((m) => m.status === "resolving") ??
+    MOCK_MARKETS.find((m) => m.status === "resolving");
   const totalVolume = markets.reduce((acc, m) => acc + m.volumeUSD, 0);
   const liveCount = markets.filter((m) => m.status === "live").length;
 
