@@ -5,9 +5,22 @@ import { useI18n } from "./i18n-provider";
 
 export function SiteFooter() {
   const { locale, t } = useI18n();
-  const whitepaperHref = locale === "zh"
+  const isZh = locale === "zh";
+  const whitepaperHref = isZh
     ? "https://app.notion.com/p/RESOLVE-AI-3919d182044c80b4b8c7e678bd4554f4"
     : "https://app.notion.com/p/RESOLVE-AI-Native-Prediction-Markets-3919d182044c80489b8aebe35f1d4ad0";
+  const aiConsensusHref = isZh
+    ? "https://app.notion.com/p/3929d182044c8185b1c1f75186db193b"
+    : "https://app.notion.com/p/3929d182044c818c8feec416f63216c2";
+  const disputeModeHref = isZh
+    ? "https://app.notion.com/p/3929d182044c81dea710ef5850570512"
+    : "https://app.notion.com/p/3929d182044c810ba731e2d53f15dd7c";
+  const registryHref = isZh
+    ? "https://app.notion.com/p/3929d182044c81ea929bd69a3e75d7a2"
+    : "https://app.notion.com/p/3929d182044c8176b31ee2bcea3976fd";
+  const privacyHref = isZh
+    ? "https://app.notion.com/p/3929d182044c8102b155c2e409a7d93d"
+    : "https://app.notion.com/p/3929d182044c81b9992eff4052732b5c";
   return (
     <footer className="mt-12 border-t-2 border-ink bg-raised">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20">
@@ -19,21 +32,21 @@ export function SiteFooter() {
             { href: "/portfolio", label: t("nav.portfolio") },
           ]} />
           <Col title={t("footer.protocol")} tone="text-pitch-700" items={[
-            { href: "#", label: t("footer.aiConsensus") },
-            { href: "#", label: t("footer.disputeMode") },
-            { href: "#", label: t("footer.registry") },
+            { href: aiConsensusHref, label: t("footer.aiConsensus") },
+            { href: disputeModeHref, label: t("footer.disputeMode") },
+            { href: registryHref, label: t("footer.registry") },
             { href: whitepaperHref, label: t("footer.whitepaper") },
           ]} />
           <Col title={t("footer.ecosystem")} tone="text-crowd-700" items={[
-            { href: "#", label: "HTX ecosystem" },
-            { href: "#", label: "B.AI compute" },
-            { href: "#", label: "Genesis hackathon" },
+            { href: "https://www.htx.com/", label: "HTX ecosystem", external: true },
+            { href: "https://b.ai/", label: "B.AI compute", external: true },
+            { href: "https://www.htxdao.com/hackathon/", label: "Genesis hackathon", external: true },
           ]} />
           <Col title={t("footer.company")} tone="text-magenta-700" items={[
             { href: "#", label: t("footer.about") },
             { href: "#", label: t("footer.docs") },
             { href: "#", label: t("footer.terms") },
-            { href: "#", label: t("footer.privacy") },
+            { href: privacyHref, label: t("footer.privacy") },
           ]} />
         </div>
 
@@ -59,6 +72,8 @@ export function SiteFooter() {
   );
 }
 
+type ColItem = { href: string; label: string; external?: boolean };
+
 function Col({
   title,
   tone,
@@ -66,7 +81,7 @@ function Col({
 }: {
   title: string;
   tone: string;
-  items: { href: string; label: string }[];
+  items: ColItem[];
 }) {
   return (
     <div>
@@ -74,7 +89,11 @@ function Col({
       <ul className="mt-4 space-y-2.5 text-sm font-semibold text-ink/80">
         {items.map((i) => (
           <li key={i.label}>
-            <Link href={i.href} className="hover:text-ink">{i.label}</Link>
+            {i.external ? (
+              <a href={i.href} target="_blank" rel="noopener noreferrer" className="hover:text-ink">{i.label}</a>
+            ) : (
+              <Link href={i.href} className="hover:text-ink">{i.label}</Link>
+            )}
           </li>
         ))}
       </ul>
