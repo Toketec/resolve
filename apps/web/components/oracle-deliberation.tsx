@@ -158,7 +158,7 @@ export function OracleDeliberation({
   }
 
   return (
-    <section className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">
+    <section className="min-w-0 overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">
       <div className="flex items-center justify-between border-b-2 border-ink bg-raised px-4 py-3">
         <p className="font-score text-[10px] font-bold uppercase tracking-[0.2em] text-muted">
           Oracle deliberation
@@ -225,24 +225,24 @@ export function OracleDeliberation({
               return (
                 <div
                   key={v.agentId}
-                  className="vote-enter rounded-2xl border-2 border-ink bg-raised p-4"
+                  className="vote-enter min-w-0 overflow-hidden rounded-2xl border-2 border-ink bg-raised p-4"
                   style={{ animationDelay: `${Math.min(i, 1) * 40}ms` }}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-10 items-center justify-center rounded-xl border-2 border-ink bg-card">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-ink bg-card">
                         <ShieldCheck className="size-5 text-ink" strokeWidth={2.5} />
                       </div>
-                      <div>
-                        <p className="font-display text-sm font-black uppercase tracking-tight text-ink">
+                      <div className="min-w-0">
+                        <p className="truncate font-display text-sm font-black uppercase tracking-tight text-ink">
                           {agent?.name ?? v.callsign}
                         </p>
-                        <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
+                        <p className="truncate font-score text-[10px] font-bold uppercase tracking-wider text-muted">
                           {v.callsign} · {agent?.poweredBy ?? "GPT"}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-right">
+                    <div className="flex shrink-0 items-center gap-4 text-right">
                       <div>
                         <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">vote</p>
                         <p className="font-display text-base font-black" style={{ color: v.vote === "YES" ? "#00B14F" : "#FF2D6F" }}>
@@ -262,25 +262,25 @@ export function OracleDeliberation({
                       href={`${TRONSCAN_SHASTA}/#/address/${market.creator.address}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink transition hover:bg-raised"
+                      className="mt-3 inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink transition hover:bg-raised"
                     >
-                      <BadgeCheck className="size-3 text-royal-700" />
-                      8004 · {agent.ba8004Id}
-                      <ExternalLink className="size-3 text-muted" />
+                      <span className="shrink-0"><BadgeCheck className="size-3 text-royal-700" /></span>
+                      <span className="truncate">8004 · {agent.ba8004Id}</span>
+                      <span className="shrink-0"><ExternalLink className="size-3 text-muted" /></span>
                     </a>
                   )}
 
                   <div className="mt-3 space-y-2">
                     {v.evidence.map((e, j) => (
                       <div key={j} className="flex items-start gap-2 rounded-xl border-2 border-ink bg-card px-3 py-2">
-                        <Globe2 className="mt-0.5 size-3.5 text-cyan-700" strokeWidth={2.5} />
+                        <Globe2 className="mt-0.5 size-3.5 shrink-0 text-cyan-700" strokeWidth={2.5} />
                         <div className="min-w-0 flex-1">
-                          <p className="font-score text-[10px] font-bold uppercase tracking-wider text-cyan-700">
+                          <p className="truncate font-score text-[10px] font-bold uppercase tracking-wider text-cyan-700">
                             {e.kind} · {e.source}
                           </p>
-                          <p className="mt-0.5 truncate text-sm font-medium text-ink/80">&ldquo;{e.snippet}&rdquo;</p>
+                          <p className="mt-0.5 break-words text-sm font-medium text-ink/80">&ldquo;{e.snippet}&rdquo;</p>
                         </div>
-                        <a href={e.url} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-ink">
+                        <a href={e.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-muted hover:text-ink">
                           <ExternalLink className="size-3.5" />
                         </a>
                       </div>
