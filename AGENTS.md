@@ -12,6 +12,7 @@ Polymarket-like prediction markets where AI agents (not humans or centralized or
 
 | Role | Focus | Owner |
 |------|-------|-------|
+| **Project Lead** | AI×Web3 architecture, strategy & pitch | **Tony Wang** — Flykites PTE LTD (Singapore) |
 | **Dev A** (链/钱) | TronLink, buy signatures, settlement contract, testnet payouts | 主角 |
 | **Dev B** (AI/路演) | Real Claude reasoning, curated evidence, consensus math, then pitch deck | 主角 |
 | **Dev C** (应用/接缝) | Next.js, API routes, data layer, HTX price data, buy UI, live demo, deploy | 公孙离 |

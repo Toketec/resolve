@@ -13,9 +13,12 @@
 
 | Member | Role | Contact |
 |--------|------|---------|
-| TBD | — | — |
-| TBD | — | — |
-| TBD | — | — |
+| **Tony Wang** | Project Lead · AI × Web3 Senior Architect | Flykites PTE LTD (Singapore) |
+| TBD | Dev A — Chain & Settlement Contract | — |
+| TBD | Dev B — AI Oracle & Pitch | — |
+| TBD | Dev C — App, Data & Integration | — |
+
+> **Tony Wang** — AI × Web3 senior technologist and serial entrepreneur based in the Greater Bay Area. Former senior expert at Digiwin Software. Early pioneer in China's on-demand delivery space (2015, Paoku/DaDa), validated O2O last-mile demand from zero. Outstanding Project Lead awarded by Jiangsu Brand Association. Long-term partner of Singapore National Youth Council (NYC & Youth Plan). Led multiple enterprise-grade AI Native implementations. Contributed to Funtana web3 community localization and Pannetwork AI on-chain payment system from development through funding.
 
 ---
 
