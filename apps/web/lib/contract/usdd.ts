@@ -32,9 +32,12 @@ export async function approveUSDD(
 ): Promise<string> {
   const tw = getClientTronWeb();
   if (!tw) throw new Error("TronLink 未安装/未连接，无法授权 USDD");
+  const from = tw.defaultAddress?.base58;
   // TronLink 注入的 tronWeb 使用 .contract(ABI).at(ADDRESS) 模式
   const c = await tw.contract(USDD_ABI as any).at(USDD_ADDRESS);
-  const txHash: string = await c.approve(spender, String(amountSun)).send();
+  const txHash: string = await c
+    .approve(spender, String(amountSun))
+    .send({ feeLimit: 1_000_000_000, callValue: 0, ...(from ? { from } : {}) });
   return txHash;
 }
 

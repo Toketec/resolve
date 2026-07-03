@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORIES } from "@/lib/mock";
 import type { Category } from "@/lib/types";
+import { useWallet } from "@/components/wallet-provider";
+import { createMarket } from "@/lib/contract/settlement";
+import { approveUSDD, usddBalanceOf, usddToSun } from "@/lib/contract/usdd";
+import { SETTLEMENT_ADDRESS } from "@/lib/constants";
 
 const STEPS = ["Question", "Resolution", "Liquidity", "Review"] as const;
 
@@ -16,7 +21,27 @@ const TEMPLATES = [
   "Will [body] approve [decision] before [date]?",
 ];
 
+/** 生成 URL slug: "Will BTC close > 150k?" → "will-btc-close-above-150k" */
+function makeSlug(question: string): string {
+  return question
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "market";
+}
+
+type DeployStep = "idle" | "creating" | "approving" | "deploying";
+
+const DEPLOY_LABELS: Record<DeployStep, string> = {
+  idle: "",
+  creating: "Creating market record…",
+  approving: "Approving USDD…",
+  deploying: "Deploying on-chain…",
+};
+
 export default function CreateMarketPage() {
+  const router = useRouter();
+  const wallet = useWallet();
   const [step, setStep] = useState(0);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -25,6 +50,89 @@ export default function CreateMarketPage() {
   const [threshold, setThreshold] = useState(75);
   const [expiry, setExpiry] = useState("2026-12-31");
   const [liquidity, setLiquidity] = useState("500");
+  const [deployStep, setDeployStep] = useState<DeployStep>("idle");
+  const [deployError, setDeployError] = useState("");
+
+  const deploying = deployStep !== "idle";
+
+  const handleDeploy = async () => {
+    // 验证必填项
+    if (!title.trim()) {
+      setDeployError("Question is required");
+      return;
+    }
+    if (!expiry) {
+      setDeployError("Expiry date is required");
+      return;
+    }
+    if (deploying) return;
+
+    setDeployError("");
+    const slug = makeSlug(title);
+
+    try {
+      const liqNum = Number(liquidity);
+      let txHash: string | undefined;
+
+      // === 先上链（如果钱包已连接且有流动性）===
+      if (wallet.connected && liqNum > 0) {
+        const amountSun = usddToSun(liqNum);
+
+        // 检查 USDD 余额
+        try {
+          const bal = await usddBalanceOf(wallet.address);
+          if (bal < amountSun) {
+            throw new Error(`USDD 余额不足，需要 ${liquidity} USDD`);
+          }
+        } catch (balErr) {
+          throw new Error(
+            balErr instanceof Error ? balErr.message : "无法查询 USDD 余额",
+          );
+        }
+
+        // Approve USDD
+        setDeployStep("approving");
+        await approveUSDD(SETTLEMENT_ADDRESS, amountSun);
+
+        // Create market on-chain
+        setDeployStep("deploying");
+        const result = await createMarket(slug, amountSun);
+        txHash = result.txHash;
+      }
+
+      // === 再同步数据库（链上确认后才写入）===
+      setDeployStep("creating");
+      const res = await fetch("/api/markets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          question: title.trim(),
+          description: description.trim(),
+          expires_at: new Date(expiry).toISOString(),
+          settlement_tx_hash: txHash,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const err = (data as { error?: string }).error;
+        if (res.status === 409) throw new Error(err || "Market with this slug already exists");
+        throw new Error(err || `Server error (${res.status})`);
+      }
+
+      const market = await res.json();
+      router.push(`/markets/${market.slug}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Deploy failed";
+      if (msg.toLowerCase().includes("rejected") || msg.toLowerCase().includes("user")) {
+        setDeployError("User rejected the transaction. Market was not created.");
+      } else {
+        setDeployError(msg);
+      }
+      setDeployStep("idle");
+    }
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
@@ -226,11 +334,32 @@ export default function CreateMarketPage() {
                 Continue <ArrowRight className="size-4" />
               </button>
             ) : (
-              <button className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-pitch-500 px-6 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-ink shadow-stamp transition hover:-translate-y-0.5 hover:shadow-stamp-lg">
-                Deploy market <ArrowRight className="size-4" />
-              </button>
+              <div className="flex flex-col items-end gap-1.5">
+                <button
+                  onClick={handleDeploy}
+                  disabled={deploying || !title.trim()}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-ink bg-pitch-500 px-6 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-ink shadow-stamp transition hover:-translate-y-0.5 hover:shadow-stamp-lg disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {deploying ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Deploying…
+                    </>
+                  ) : (
+                    <>Deploy market <ArrowRight className="size-4" /></>
+                  )}
+                </button>
+                {deployStep !== "idle" && (
+                  <p className="text-[11px] font-bold text-goal-600 animate-pulse">
+                    {DEPLOY_LABELS[deployStep]}
+                  </p>
+                )}
+              </div>
             )}
           </div>
+          {deployError && (
+            <p className="text-sm font-bold text-red-600 mt-2">{deployError}</p>
+          )}
         </div>
 
         {/* Live preview */}

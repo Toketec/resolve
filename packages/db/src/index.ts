@@ -2,6 +2,7 @@ export { getAnonClient, getServiceClient, getAnyClient } from './client';
 export {
   listMarkets,
   getMarketBySlug,
+  insertMarket,
   updateMarket,
   getPosition,
   insertPosition,

@@ -4,7 +4,7 @@
 
 Create Market 页面（`apps/web/app/create/page.tsx`）的 **"Deploy market"** 按钮目前没有 ``onClick`` 处理函数，点击无反应。用户填写完市场信息（问题、描述、标准、阈值、过期时间、初始流动性）后无法真正创建市场。
 
-需要串联完整的数据流：**表单验证 → Supabase 写入元数据 → TRON 合约创建链上市场并锁仓 USDD → 跳转到市场详情页**。
+需要串联完整的数据流：**表单验证 → TRON 合约创建链上市场并锁仓 USDD → Supabase 写入元数据（带回链上 txHash）→ 跳转到市场详情页**。
 
 ## 现有基础设施
 
@@ -30,7 +30,7 @@ Create Market 页面（`apps/web/app/create/page.tsx`）的 **"Deploy market"** 
 - `apps/web/app/create/page.tsx` → 表单 UI + 4 步表单 ✅
 - **缺**: "Deploy market" 按钮的 ``onClick`` 处理
 
-## 方案：双层写入
+## 方案：双层写入（先链后库）
 
 ```
 用户点击 "Deploy market"
@@ -39,16 +39,17 @@ Create Market 页面（`apps/web/app/create/page.tsx`）的 **"Deploy market"** 
     │ validation │  ← 必填项检查 + slug 生成
     └─────┬─────┘
           │
-   ┌──────▼──────┐
-   │  POST /api/ │  ● step 1: Supabase 写入元数据
-   │   markets   │  ● 返回 marketId + slug
-   └──────┬──────┘
-          │
    ┌──────▼─────────────────┐
-   │  TronLink 签名（可选）    │  ● step 2: 如果 TronLink 已连接且有流动性
-   │  approve USDD →        │  ● 调用合约 createMarket()
-   │  createMarket()        │  ● 锁仓 USDD
+   │  TronLink 签名（可选）    │  ● step 1: 如果 TronLink 已连接且有流动性
+   │  approve USDD →        │  ● 调用合约 createMarket() 锁仓 USDD
+   │  createMarket()        │  ● 拿到链上 txHash
    └──────┬─────────────────┘
+          │
+   ┌──────▼──────┐
+   │  POST /api/ │  ● step 2: Supabase 写入元数据
+   │   markets   │  ● 附带 settlement_tx_hash
+   │             │  ● 返回 marketId + slug
+   └──────┬──────┘
           │
    ┌──────▼──────┐
    │ 跳转到       │
@@ -57,7 +58,7 @@ Create Market 页面（`apps/web/app/create/page.tsx`）的 **"Deploy market"** 
    └─────────────┘
 ```
 
-**关键原则：Supabase 始终写入，TRON 按条件写入（TronLink 已连接 + liquidity > 0）。**
+**关键原则：先链上确认，再同步数据库。用户拒绝签名时不产生任何 DB 记录。
 
 ## 不涉及的
 

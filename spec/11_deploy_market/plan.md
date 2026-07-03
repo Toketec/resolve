@@ -52,15 +52,23 @@ export async function insertMarket(input: {
 export async function POST(req: Request) {
   let body;
   try { body = await req.json(); } catch { ... }
-  
-  // field validate: question, slug, description, expires_at
-  // slug 生成规则: question 的小写 ASCII + hyphen 版本（如 "Will BTC > 150k?" → "will-btc-150k"）
-  
+
+  // field validate: slug, question, description, expires_at
+  // 可选 settlement_tx_hash（链上 createMarket 成功后传入）
+  // slug 由前端 makeSlug() 生成后传入
+
   const db = getDb();
   if (!db) return Response.json({ error: "No DB" }, { status: 503 });
-  
-  const row = await db.insertMarket({ ... });
-  return Response.json(row);
+
+  // 检查 slug 冲突 → 409
+  const existing = await db.getMarketBySlug(slug);
+  if (existing) return Response.json({ error: "slug exists" }, { status: 409 });
+
+  const row = await db.insertMarket({
+    slug, question, description, status: "active",
+    expires_at, settlement_tx_hash,
+  });
+  return Response.json(marketRowToMarket(row), { status: 201 });
 }
 ```
 
@@ -117,25 +125,44 @@ function makeSlug(question: string): string {
 }
 ```
 
-#### 4b. "Deploy market" button onClick
+#### 4b. "Deploy market" button onClick（先链后库）
 
 ```typescript
-const [deploying, setDeploying] = useState(false);
+const [deployStep, setDeployStep] = useState<DeployStep>("idle");
 const [deployError, setDeployError] = useState<string | null>(null);
 const router = useRouter();
 
 async function handleDeploy() {
-  setDeploying(true);
   setDeployError(null);
-  
+
   try {
     // validate 表单必填项
     if (!title.trim()) { throw new Error("Question is required"); }
     if (!expiry) { throw new Error("Expiry date is required"); }
-    
+
     const slug = makeSlug(title);
-    
-    // Step 1: POST to API → Supabase 写入
+    const liqNum = Number(liquidity);
+    let txHash: string | undefined;
+
+    // Step 1: 先上链（如果 TronLink 已连接 + liquidity > 0）
+    // 用户拒绝签名 → 什么都不写入，干净退出
+    if (wallet.connected && liqNum > 0) {
+      const amountSun = usddToSun(liqNum);
+
+      // 检查 USDD 余额
+      const bal = await usddBalanceOf(wallet.address);
+      if (bal < amountSun) throw new Error(`USDD 余额不足，需要 ${liquidity} USDD`);
+
+      setDeployStep("approving");
+      await approveUSDD(SETTLEMENT_ADDRESS, amountSun);
+
+      setDeployStep("deploying");
+      const result = await createMarket(slug, amountSun);
+      txHash = result.txHash;
+    }
+
+    // Step 2: 再同步数据库（链上确认后才写入）
+    setDeployStep("creating");
     const res = await fetch('/api/markets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,43 +171,31 @@ async function handleDeploy() {
         question: title,
         description,
         expires_at: new Date(expiry).toISOString(),
-        // 其他字段不作为 DB columns，留待后续
+        settlement_tx_hash: txHash, // 链上 txHash（如果有）
       }),
     });
     if (!res.ok) throw new Error(await res.text());
     const market = await res.json();
-    
-    // Step 2 (可选): 如果 TronLink 已连接 + liquidity > 0
-    // → 先 approve USDD → 再 createMarket
-    if (wallet.connected && Number(liquidity) > 0) {
-      const amountSun = usddToSun(Number(liquidity));
-      // 检查 balance
-      const bal = await usddBalanceOf(wallet.address);
-      if (bal < amountSun) {
-        setDeployError(`USDD 余额不足，当前余额不足 ${liquidity} USDD。已创建市场记录但未锁仓。`);
-        router.push(`/markets/${slug}`);
-        return;
-      }
-      // approve
-      await approveUSDD(SETTLEMENT_ADDRESS, amountSun);
-      // createMarket
-      await createMarket(slug, amountSun);
-    }
-    
-    router.push(`/markets/${slug}`);
+
+    router.push(`/markets/${market.slug}`);
   } catch (err) {
-    setDeployError(err instanceof Error ? err.message : 'Deploy failed');
-  } finally {
-    setDeploying(false);
+    const msg = err instanceof Error ? err.message : 'Deploy failed';
+    if (msg.toLowerCase().includes('rejected') || msg.toLowerCase().includes('user')) {
+      setDeployError('User rejected the transaction. Market was not created.');
+    } else {
+      setDeployError(msg);
+    }
+    setDeployStep("idle");
   }
 }
 ```
 
 #### 4c. UI 状态处理
 
-- Bytton 文字变为 `Deploying…`，disabled
-- 按钮上方显示 loading spinner + 进度（"Creating market record…" / "Approving USDD…" / "Deploying on-chain…"）
+- Button 文字变为 `Deploying…`，disabled
+- 按钮下方显示 loading spinner + 进度（"Approving USDD…" / "Deploying on-chain…" / "Creating market record…"）
 - 失败时显示红色错误提示，按钮恢复可点击
+- 用户拒绝签名时提示 "Market was not created"（无 DB 残留）
 - 成功后跳转到 `/markets/{slug}`
 
 ### Step 5: 集成验证

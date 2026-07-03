@@ -41,6 +41,29 @@ export async function getMarketBySlug(slug: string): Promise<MarketRow | null> {
   return data as MarketRow;
 }
 
+/** 创建新市场（id / created_at / updated_at 由 Supabase 自动生成） */
+export async function insertMarket(input: {
+  slug: string;
+  question: string;
+  description: string;
+  status?: MarketRow["status"];
+  expires_at?: string | null;
+  resolved_outcome?: MarketRow["resolved_outcome"];
+  settlement_tx_hash?: string | null;
+}): Promise<MarketRow> {
+  const { data, error } = await getAnyClient()
+    .from("markets")
+    .insert({
+      ...input,
+      status: input.status ?? "active",
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to create market: ${error.message}`);
+  return data as MarketRow;
+}
+
 /** 更新市场状态或结果 */
 export async function updateMarket(
   id: string,

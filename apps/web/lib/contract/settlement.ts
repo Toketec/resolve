@@ -49,6 +49,27 @@ export function isAirbag(): boolean {
 // ── 客户端买入（TronLink 签名）─────────────────────────
 
 /**
+ * 创建链上市场 + 注资流动性（客户端 TronLink 签名）。
+ * 注意：需先调用 approveUSDD() 授权后调用此方法。
+ * 返回 txHash。
+ */
+export async function createMarket(
+  marketId: string,
+  liquiditySun: bigint,
+): Promise<{ txHash: string }> {
+  const tw = getClientTronWeb();
+  if (!tw) throw new Error("TronLink 未安装/未连接");
+
+  const from = tw.defaultAddress?.base58;
+  const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const txHash: string = await c
+    .createMarket(mid, String(liquiditySun))
+    .send({ feeLimit: 1_000_000_000, callValue: 0, ...(from ? { from } : {}) });
+  return { txHash };
+}
+
+/**
  * 买入份额（用户 TronLink 签名）。
  * 注意：需要先调用 approveUSDD() 授权 USDD，然后调用此方法。
  * 返回 txHash。
@@ -61,13 +82,14 @@ export async function buyShares(
   const tw = getClientTronWeb();
   if (!tw) throw new Error("TronLink 未安装/未连接，无法买入");
 
+  const from = tw.defaultAddress?.base58;
   // TronLink 注入的 tronWeb 使用 .contract(ABI).at(ADDRESS) 模式
   const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
   const mid = marketIdToBytes32(marketId);
   const isYes = side === "YES";
   const txHash: string = await c
     .buyShares(mid, isYes, String(amountSun))
-    .send({ feeLimit: 1_000_000_000, callValue: 0 });
+    .send({ feeLimit: 1_000_000_000, callValue: 0, ...(from ? { from } : {}) });
   return { txHash };
 }
 

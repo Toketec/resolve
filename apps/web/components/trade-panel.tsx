@@ -85,7 +85,7 @@ export function TradePanel({ market }: { market: Market }) {
       // 4) 买入 → TronLink 弹出签名
       setBuy({ phase: "buying" });
       const isYes = side === "YES";
-      const result = await contractBuyShares(market.id, side, amountSun);
+      const result = await contractBuyShares(market.slug, side, amountSun);
       txHash = result.txHash;
 
       // 5) 持久化到 Supabase
