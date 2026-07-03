@@ -16,7 +16,7 @@
 | **HTX 公开 API** | 价格数据 | BULL-1 Agent 实时推理证据（价格+订单簿+K线） | 免费 |
 | **B.AI 8004 身份注册** | Agent 链上身份 | 每个 AI Agent 在 TRON 上注册链上身份 ID | 免费 |
 | **B.AI x402 微支付** | Agent 自主支付 | resolve() 完成后 Agent 自主支付结算费 | 免费 |
-| **B.AI 算力额度** | \$300-500 免费算力 | NEUT-1 Agent 推理走 B.AI 计算网络 | \$300-500 |
+| **B.AI 算力额度** | \\$300-500 免费算力 | NEUT-1 Agent 推理走 B.AI 计算网络 | \\$300-500 |
 
 ### Q: TRON 和 HTX 什么关系？为什么选 TRON？
 
@@ -45,20 +45,20 @@ USDD（TRON 上的去中心化稳定币）
 **4 层 LLM 调用链，不是简单的「调个 API」：**
 
 ```
-市场到期（管理员触发）
+Market expires (triggered by admin)
     │
-Step 1 ── 6 个 Agent 并行推理（Promise.all）
-    │      每个 Agent 有独立角色 prompt + 专属证据集
-    │      互不干扰，各自返回 {outcome, confidence, evidence[]}
-    │      6 个 Agent 覆盖 6 个独立维度
-    │      耗时约 5-6 秒（6 次并行）
+Step 1 ── 6 Agents parallel reasoning (Promise.all)
+    │      Each agent has independent role prompt + curated evidence
+    │      Non-interfering, each returns {outcome, confidence, evidence[]}
+    │      6 agents across 6 independent dimensions
+    │      ~5-6 seconds total (6 parallel calls)
     │
-Step 2 ── 加权共识
-    │      权重: 交易所 1.0, 媒体 0.8, 链上 0.9, 技术 0.7, 监管 0.7, 宏观 0.8
-    │      YES 加权和 vs NO 加权和 → consensus_score
-    │      阈值 0.65 → 达标则 consensus reached
+Step 2 ── Weighted consensus
+    │      Weights: Exchange 1.0, Media 0.8, Onchain 0.9, Tech 0.7, Reg 0.7, Macro 0.8
+    │      YES sum vs NO sum → consensus_score
+    │      Threshold 0.65 → consensus reached
     │
-Step 3 ── 结果写入 Supabase + UI 逐条动画展示
+Step 3 ── Results written to Supabase + UI animation
 ```
 
 **总共 6 次 LLM 调用（6 个 Agent 并行），总耗时约 5-6 秒。**
@@ -70,7 +70,7 @@ Step 3 ── 结果写入 Supabase + UI 逐条动画展示
 | Orchestrator | Claude Sonnet 4 | B.AI（如兼容） | 谁的响应快用谁 |
 | BULL-1 | Claude Sonnet 4 | — | 稳定优先 |
 | BEAR-1 | Claude Sonnet 4 | — | 稳定优先 |
-| **NEUT-1** | **B.AI 算力** | Claude | 展示生态集成，B.AI 有\$500 额度 |
+| **NEUT-1** | **B.AI 算力** | Claude | 展示生态集成，B.AI 有\\$500 额度 |
 
 ### Q: 6 个 Agent 跑在哪？用户能自己配置吗？
 
@@ -85,7 +85,7 @@ Step 3 ── 结果写入 Supabase + UI 逐条动画展示
 | ⚡ **NEUT-1** (链上) | 1 | 链上持仓/巨鲸 → 中性判断 | ✅ 真实调用（优先走B.AI） |
 | ⚡ **NEUT-2** (宏观) | 1 | 宏观利率/地缘 → 中性补充 | ✅ 真实调用 |
 
-**全部 6 个都是 ACTIVE，没有 STANDBY。** 市场到期后 6 个 Agent 并行推理，从 6 个独立维度做出全方位裁决。这不是"部分观点"，而是**六维全覆盖**。
+**全部 6 个都是 ACTIVE — 没有 STANDBY 层级。** 市场到期后 6 个 Agent 并行推理，从 6 个独立维度做出全方位裁决。
 
 **为何不开放配置？** 保证 Demo 稳定可控。评委看到的是经过预演的、可重复的一镜到底体验。
 **以后版本可以做成「用户选 Agent 组队」的模式。**
@@ -175,7 +175,7 @@ Step 3 ── 结果写入 Supabase + UI 逐条动画展示
 | 用户持仓 | **Supabase + tx_hash** | 持仓列表秒级渲染，tx_hash 可去 Tronscan 验证 |
 | Agent 推理记录 | **Supabase** | AI 日志不需要上链，占用链上空间不划算 |
 | **资产结算（USDD 转账）** | **TRON 链** | 钱必须链上走，这是信任的锚点 |
-| **\$HTX 质押** | **TRON 链** | 经济循环需要链上可信，不可否认 |
+| **\\$HTX 质押** | **TRON 链** | 经济循环需要链上可信，不可否认 |
 
 **答辩一页纸**：_"不做为了区块链而区块链的妥协——市场列表搜得快用数据库，每一分钱在链上可查。"_
 
@@ -189,7 +189,7 @@ Step 3 ── 结果写入 Supabase + UI 逐条动画展示
 **不纯 Web2 的理由**：
 - 资产结算不在链上就不叫 Web3 项目
 - 评分维度明确包含「AI/Web3 应用程度」
-- \$HTX 质押 + Agent 激励需要在链上产生可信经济循环
+- \\$HTX 质押 + Agent 激励需要在链上产生可信经济循环
 
 ### Q: 持仓数据靠前端 POST 写入 DB，怎么保证数据可信？
 
@@ -203,9 +203,9 @@ Step 3 ── 结果写入 Supabase + UI 逐条动画展示
   → POST txHash + 元数据到 /api/buy → Supabase positions 表
 ```
 
-**信任锚**：`txHash` 是可验证的链上证据——任何人可打开 `shasta.tronscan.org` 搜索这个 hash 确认交易存在。前端只是读取缓存。
+**信任锚**：`txHash` 是可验证的链上证据——任何人可打开 `shasta.tronscan.org` 搜索这个 hash 确认交易存在。前端只是读取缓存，不缓存也没关系，用户可以自己去链上查。
 
-**赛后优化方向**：Event 驱动索引器。给合约加 `PositionChanged` event，跑定时任务每 30 秒扫链上最新区块的 event logs → 自动写入 DB。这样数据来源从前端 POST 变为链上 events 解析，**任何人都无法伪造**。
+**赛后优化方向**：Event 驱动索引器。给合约加 `PositionChanged` event，跑一个定时任务每 30 秒扫链上最新区块的 event logs → 自动写入 DB。这样数据来源从前端 POST 变为链上 events 解析，**任何人都无法伪造**。
 
 ```
 合约 emit PositionChanged(marketId, buyer, side, amount)  ✅ 不可篡改
@@ -220,26 +220,80 @@ Step 3 ── 结果写入 Supabase + UI 逐条动画展示
 
 ---
 
-## 四、\$HTX 经济模型（盈利模式）
+## 四、\\$HTX 经济模型（盈利模式）
 
 ### Q: 你们怎么赚钱？谁来付 AI 推理的账？
 
-**每次 resolve = 4 次 LLM 调用 ≈ \$0.15-0.40。** 经济模型覆盖方式：
+**每次 resolve = 4 次 LLM 调用 ≈ \\$0.15-0.40。** 经济模型覆盖方式：
 
 | 收入来源 | 运作方式 | 状态 |
 |:--------|---------|:----:|
-| **交易手续费 0.1%** | 每笔买入自动扣 → 实时展示 "→ \$HTX Buyback" | ✅ UI 已实现 |
-| **市场创建质押** | 创建新市场质押少量\$HTX（防垃圾市场） | ✅ UI 已实现 |
-| **Agent 推理费** | 市场创建者支付 \$0.1-0.3 resolve 费用 | 概念展示 |
-| **Agent 质押挖矿** | 用户质押\$HTX"支持"某个 Agent → 分享推理费收入 | UI 展示 |
+| **交易手续费 0.1%** | 每笔买入自动扣 → 实时展示 "→ \\$HTX Buyback" | ✅ UI 已实现 |
+| **市场创建质押** | 创建新市场质押少量\\$HTX（防垃圾市场） | ✅ UI 已实现 |
+| **Agent 推理费** | 市场创建者支付 \\$0.1-0.3 resolve 费用 | 概念展示 |
+| **Agent 质押挖矿** | 用户质押\\$HTX"支持"某个 Agent → 分享推理费收入 | UI 展示 |
 
-**核心叙事**：_"不是烧钱 Demo——交易费回购 \$HTX、Agent 赚 \$HTX 激励、市场创建者付推理费。三边循环，经济自洽。"_
+**核心叙事**：_"不是烧钱 Demo——交易费平台抽成 + LP（市场创建者）分润 + 创建费防垃圾。三边循环，经济自洽。"_
 
-### Q: \$HTX 回购是真的还是假的？
+**AMM 交易费详细分配**：
+
+| 费用项 | 费率 | 分配 | 说明 |
+|:------|:----|:-----|:-----|
+| **每笔交易费** | 0.1%（buy/sell 双向） | 50% → LP（创建者），50% → 平台 feePool | 对标 Polymarket 0.1% |
+| **市场创建费** | 10 USDD（固定） | 100% → 平台 feePool | 防垃圾市场 |
+| **LP 收益场景** | — | 市场创建者即唯一 LP | 交易量大时 LP 收益可观 |
+
+**收入场景推演（假设日交易量 $1M）**：
+```
+日交易量: $1,000,000
+日交易费: $1,000,000 × 0.1% = $1,000   ← 平台 $500 + LP $500
+月收入: 平台 $15K + LP $15K
+年收入: 平台 ~$180K + LP ~$180K
+```
+
+### Q: 你们的 AMM 机制和 Polymarket 一样吗？卖出的份额卖给谁？
+
+**一样有 AMM，但曲线不同。卖出时卖给流动性池，不是卖给外部做市商。**
+
+**AMM 定价公式（线性债券曲线）**：
+
+```
+YES_price = 0.5 + net / (2 * L)
+NO_price  = 1 - YES_price
+
+net: 累计 YES 买入额 - 累计 NO 买入额（USDD）
+L:   初始流动性（USDD，市场创建者注入）
+价格钳制: [0.01, 0.99]
+```
+
+**为什么用线性曲线而不是经典 x*y=k？**
+1. 合约内纯整数运算，gas 更低
+2. 自动钳制，不会出现极端滑点
+3. 单一 LP（创建者）风险可计算
+
+**卖出流程**：
+```
+用户点击 Sell → 输入份额
+    ↓
+合约计算当前价格: price = 0.5 + net / (2*L)
+    ↓
+用户获得: shares × price × (1 - 0.001 fee) USDD
+    ↓
+net 减少, YES_price 下降
+    ↓
+该用户 positions 表中的 yes_balance / no_balance 相应减少
+```
+
+**LP 的收益来源**：
+1. **做市费**：每笔交易 0.05%（费率的 50%）
+2. **创建费**：10 USDD 归平台，平台可考虑与 LP 分成（赛后）
+3. **LP 风险**：如果市场严重偏向一边，LP 需要赔付所有赢家——但 AI 共识的可靠性降低了这种风险
+
+### Q: \\$HTX 回购是真的还是假的？
 
 **当前是 UI 级展示**——计数器显示累计回购量，用于 Demo 叙事。
 真正的链上回购合约是下一步开发计划（黑客松后）。
-但这展示了**我们对 \$HTX 经济生态的设计能力**，不是套个壳。
+但这展示了**我们对 \\$HTX 经济生态的设计能力**，不是套个壳。
 
 ---
 
@@ -344,7 +398,7 @@ UMA 代币持有者（任何持有代币的人）各自查资料投票
 
 | 步骤 | 状态 |
 |:----|:----:|
-| ① 申请 B.AI 开发者账号 + \$500 算力额度 | ✅ 已申请 |
+| ① 申请 B.AI 开发者账号 + \\$500 算力额度 | ✅ 已申请 |
 | ② 拿到 API Key + Endpoint → 配到 `.env` | 进行中 |
 | ③ NEUT-1（链上 Agent）推理走 B.AI API | spec 3 实现 |
 | ④ Agent 卡片显示 "Powered by B.AI" 徽章 | spec 6 实现 |
@@ -352,7 +406,7 @@ UMA 代币持有者（任何持有代币的人）各自查资料投票
 
 ### Q: B.AI x402 支付有什么用？
 
-x402 是 B.AI 的微支付协议。在我们的场景里：**Agent 完成推理后，自主支付一笔微小的结算费（\$0.01-0.05），证明 Agent 拥有经济自主性。**
+x402 是 B.AI 的微支付协议。在我们的场景里：**Agent 完成推理后，自主支付一笔微小的结算费（\\$0.01-0.05），证明 Agent 拥有经济自主性。**
 
 答辩展示点：_"我们的 AI Agent 不光会推理，还会自己付账——这是 AI Agent 经济的雏形。"_
 
@@ -385,6 +439,7 @@ x402 是 B.AI 的微支付协议。在我们的场景里：**Agent 完成推理�
 | 加权共识计算 | 市场创建历史数据 |
 | TRON 测试网结算转账 | — |
 | HTX 实时价格数据 | — |
+| AMM 定价与买卖计算 | — |
 
 ---
 
@@ -394,10 +449,10 @@ x402 是 B.AI 的微支付协议。在我们的场景里：**Agent 完成推理�
 |:--------|:--------:|:-------------|
 | **技术创新性** | ~20% | Orchestrator 调度 + 多 Agent 共识 + B.AI 集成 — 同类项目独一份 |
 | **产品完成度** | ~25% | Walking Skeleton + mock→真实替换 + 投票动画 + 隐藏触发 |
-| **商业与生态潜力** | ~20% | 3 项 HTX 生态资源 + \$HTX 经济模型 + 可扩展的 Agent 经济叙事 |
+| **商业与生态潜力** | ~20% | 3 项 HTX 生态资源 + \\$HTX 经济模型 + 可扩展的 Agent 经济叙事 |
 | **AI/Web3 应用程度** | ~20% | 真实 AI 推理（非包装）+ TRON 链上结算 + 8004 身份 + x402 |
 | **展示表达能力** | ~15% | 45 秒一镜到底 + 投票浮现动画 + ConsensusMeter + 证据可视化 |
 
 ---
 
-> **最后一句**: 如果只记住一件事，请记住——**我们不是用一个 AI API 包装了一个 Web3 项目，而是设计了一个 AI Agent 自主推理→链上结算→\$HTX 经济循环的完整系统。**
+> **最后一句**: 如果只记住一件事，请记住——**我们不是用一个 AI API 包装了一个 Web3 项目，而是设计了一个 AI Agent 自主推理→链上结算→\\$HTX 经济循环的完整系统。**

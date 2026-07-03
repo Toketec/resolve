@@ -116,11 +116,12 @@
 
 | Component | Tech | Description |
 |-----------|------|-------------|
-| Settlement Contract | Solidity + TVM | Deployed to TRON Shasta testnet, pre-funded with USDD |
-| Wallet Connection | TronLink Extension | Users connect via browser extension |
-| Node Service | Trongrid | Free public node, no self-hosting needed |
-| Agent Identity | B.AI 8004 Protocol | Register AI Agent on-chain identity on TRON |
-| Agent Payment | B.AI x402 Protocol | Agent autonomously pays settlement fee |
+|| Settlement & AMM Contract | Solidity + TVM | Linear bonding curve AMM: `buyShares()`, `sellShares()`, `settle()`, + fee pool. Deployed to TRON Shasta testnet |
+|| AMM Pricing | Linear Bonding Curve | `YES_price = 0.5 + net/(2*L)`. Price clamped [0.01, 0.99]. 0.1% trading fee split 50/50 between LP and platform |
+|| Wallet Connection | TronLink Extension | Users connect via browser extension to sign buy/sell/createMarket |
+|| Node Service | Trongrid | Free public node, no self-hosting needed |
+|| Agent Identity | B.AI 8004 Protocol | Register AI Agent on-chain identity on TRON |
+|| Agent Payment | B.AI x402 Protocol | Agent autonomously pays settlement fee |
 
 **Why TRON instead of other chains**:
 - Contest explicitly requires HTX ecosystem — TRON is HTX's native chain
@@ -131,15 +132,17 @@
 **Comparison with Polymarket (UMA)**:
 Polymarket's arbitration layer relies on **UMA token holders voting manually** (days-long cycles, opaque results, ambiguous outcomes cause controversy). Our AI Agents directly replace this layer — after market expiry, all 6 Agents reason in parallel, completing a full 6-dimension verdict → consensus → trigger contract settlement in ~7 seconds.
 
-**Complete end-to-end flow (4-layer division)**:
+**Complete end-to-end flow (5-layer division, with AMM)**:
 ```
 Phase                     User Does         Agent Does                  System Does        Contract Does
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 ① Wallet Connect(1min)  Connect+sign         —                          UI show address     —
-② Buy Prediction(30s)   Pick side+sign       —                          Write Supabase      buyShares()
-③ AI Resolution(7s)     Watch animation      6 Agents parallel(6LLM)    Consensus math+DB   —
-                                              → 6-vote consensus        +UI animation
+② Buy/Sell(30s)         Pick side,amount     —                          Compute AMM price   buyShares()/
+                        + sign                                            Update positions    sellShares()
+③ Market Expiry(auto)   —                    6 Agents parallel(6LLM)    Consensus math+DB   —
+                                               → 6-vote consensus        +UI animation
 ④ Settlement(10s)       Owner signs settle   —                          Call contract       settle()
+⑤ Fee Claim(owner)      Owner claims fees    —                          —                   claimFees()
 ```
 
 ### 2.5 数据层
@@ -147,12 +150,14 @@ Phase                     User Does         Agent Does                  System D
 | 数据 | 存储方式 | 说明 |
 |------|---------|------|
 || 市场价格 | 内存缓存 | 从HTX API获取，缓存5分钟 |
-|| 用户仓位 | **Supabase (PostgreSQL)** | `positions` 表，记录购入详情。链上 tx_hash 作为可验证证明 |
+|| 用户仓位 | **Supabase (PostgreSQL)** | `positions` 表，`market_id + wallet_address` 唯一约束，分别追踪 YES/NO 份额余额。**按仓位余额而非单笔买入记录** |
+|| 交易历史 | **Supabase (PostgreSQL)** | `trades` 表：每笔 buy/sell 单独一行，带 tx_hash 可验证 |
+|| 平台费用池 | **TRON 合约状态** | 0.05% 每笔交易累积在合约 feePool，owner 可取 |
 || 市场数据 | **Supabase (PostgreSQL)** | `markets` 表，包含英雄市场种子数据。**元数据存 Web2 数据库**（快速搜索/排序），质押/结算走 TRON 链 |
 || Agent推理结果 | **Supabase (PostgreSQL)** | `agent_consensus` + `agent_votes` 表 |
 || 共识历史 | **Supabase (PostgreSQL)** | 每次 resolve 结果持久化在 `agent_consensus` |
-|| 清算资产 | **TRON Shasta 链** | USDD 转账通过智能合约执行，纯链上不可篡改 |
-|| \$HTX 质押 | **TRON 链** | 创建市场时质押\$HTX（防垃圾），链上合约管理 |
+|| 清算资产 | **TRON Shasta 链** | USDD 转账通过 AMM 合约的 settle() 执行，纯链上不可篡改 |
+|| 创建费 | **TRON 合约状态** | 创建市场固定 10 USDD，入 feePool |
 
 **数据架构决策总结（Hybrid）**:
 - 需要**快速查询/搜索/排序**的数据 → Web2 数据库（Supabase）
@@ -360,6 +365,47 @@ async function indexEvents() {
 - 数据来源从前端 POST 变为**链上 events 解析** → 不可篡改
 - 新增 `PositionChanged` event 让链上可查询所有用户持仓历史
 - 与纯链上查询方案相比，索引器保证前端毫秒级响应
+
+### ADR-007: AMM 线性债券曲线 + 双向交易（Buy/Sell）+ 费用模型
+
+**选择**: 线性债券曲线（Linear Bonding Curve）AMM + 0.1% 费率 + 创建费 10 USDD + 唯一 LP（市场创建者）
+
+**触发条件**: 2026-07-02 — 用户发现 TradePanel 只有 Buy 没有 Sell，要求匹配 Polymarket 的 AMM 交易体验
+
+**核心公式**:
+
+```
+YES_price = 0.5 + net / (2 * L)
+NO_price  = 1 - YES_price
+
+net: 累计 YES 买入额 - 累计 NO 买入额 (USDD)
+L:   初始流动性 (USDD)，market creator 创建时注入
+价格范围: [0.01, 0.99]
+```
+
+**费用分配**:
+
+| 费用 | 金额 | 去向 |
+|:----|:----|:-----|
+| 交易费 | 0.1%（每笔 buy/sell） | 50% → LP（市场创建者），50% → 平台 feePool |
+| 创建费 | 10 USDD（固定） | 全部 → 平台 feePool |
+| 结算费（远期） | 1 USDD（可选） | 全部 → 平台 feePool |
+
+**选择线性曲线而非 Constant Product (x*y=k) 的理由**:
+1. **合约内整数运算简单** — 线性公式纯加减乘除，gas 低，无精度问题
+2. **价格范围可控** — 自动钳制在 [1¢, 99¢]，不会出现极端滑点
+3. **流动性效率** — L 固定，价格对成交量的响应预知，LP 风险可计算
+4. **hackathon 可演示** — 比 Uni v2 的 AMM 少 50% 的代码量
+
+**为什么不走纯链上（不做索引器就上链）**:
+- `positions` 表走 SQL 更新（`UPDATE positions SET yes_balance = yes_balance + 1`）比链上 event 扫描快 500x
+- 链上只做资产层（锁 USDD、价格计算、费用记账），DB 做展示层
+- 核心原则不变: *"Web2 speed where you need it, Web3 trust where it matters"*
+
+**不选择多 LP（外部做市商）的理由（Hackathon 阶段）**:
+1. 多 LP 需要完善的收益分配算法（类 Uni v2 的 LP share），增加 100+ 行合约代码
+2. 演示场景下单一 LP（market creator）足以展示 AMM 定价 + 买卖功能
+3. 赛后路线图明确将多 LP 列为 Phase 2 高优先级
 
 ---
 

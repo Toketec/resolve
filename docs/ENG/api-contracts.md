@@ -31,30 +31,114 @@ status     = confidence >= threshold ? "consensus" : "dispute"
 
 ---
 
-## Contract 2 — Trade & Settle (C ↔ A)
+## Contract 2 — Trade, AMM & Settle (C ↔ A)
 
 Dev C exposes the API route and UI; Dev A implements the on-chain side.
 
-```ts
-// Buy one side. C owns the route + UI; A owns the signing/transfer.
-async function buyShares(args: {
-  marketId: string;
-  side: Outcome;          // "YES" | "NO"
-  amount: number;         // in USDD
-  walletAddress: string;  // connected TronLink wallet
-}): Promise<Position>;     // includes walletAddress for payout
+### AMM Pricing Model (Linear Bonding Curve)
 
-// Settle on consensus. A implements the contract call.
+Each market is an independent AMM liquidity pool. The market creator (single LP) deposits initial liquidity USDD at market creation. All trades — buy and sell — interact with this pool.
+
+```
+YES_price = 0.5 + net / (2 * L)
+NO_price  = 1 - YES_price
+
+where:
+  net = cumulative YES volume bought - cumulative NO volume bought (in USDD)
+  L   = initial liquidity deposited by market creator (in USDD)
+
+Price clamped to [0.01, 0.99]
+```
+
+When a user buys YES, `net` increases → YES price rises. When a user sells YES, `net` decreases → YES price falls. The LP's deposited USDD serves as the counterparty for all trades.
+
+**Example** (market with L = 1,000 USDD, no trades yet):
+
+| Action | net change | YES price | NO price |
+|:-------|:----------:|:---------:|:--------:|
+| Initial state | net = 0 | 50% | 50% |
+| Buy $100 YES | net += 100 | **55% ↑** | 45% |
+| Buy $200 NO | net -= 200 | **45% ↓** | 55% |
+| Sell 50 YES shares | net -= 55 | ~43% | 57% |
+
+### Interfaces
+
+```ts
+// ── Buy ──────────────────────────────────────────────
+// C owns the route + UI; A owns the signing/transfer.
+async function buyShares(args: {
+  marketId: string;       // slug
+  side: Outcome;          // "YES" | "NO"
+  amountUSDD: number;     // USDD input
+  walletAddress: string;  // connected TronLink wallet
+}): Promise<TransactionResult>;
+
+// ── Sell ─────────────────────────────────────────────
+// NEW: sell shares back to the AMM pool
+async function sellShares(args: {
+  marketId: string;
+  side: Outcome;          // which side to sell ("YES" or "NO")
+  shares: number;         // number of shares to sell
+  walletAddress: string;
+}): Promise<TransactionResult>;
+
+interface TransactionResult {
+  txHash: string;
+  shares: number;         // shares actually bought/sold
+  price: number;          // execution price (0..1)
+  usddAmount: number;     // USDD paid out or received
+  fee: number;            // platform fee collected (in USDD)
+  simulated: boolean;     // airbag mode
+}
+
+// ── Settle ───────────────────────────────────────────
+// On consensus, owner settles winners
 async function settle(args: {
   marketId: string;
   outcome: Outcome;
   winnerWallet: string;
 }): Promise<{ txHash: string; simulated: boolean }>;
+
+// ── Pool query (read-only) ───────────────────────────
+async function getPoolState(marketId: string): Promise<{
+  yesSupply: number;      // YES shares outstanding
+  noSupply: number;       // NO shares outstanding
+  yesPrice: number;       // current YES price
+  noPrice: number;        // current NO price
+  liquidity: number;      // USDD remaining in pool
+  feePool: number;        // accumulated platform fees
+}>;
+
+// ── Create market (with creation fee) ────────────────
+async function createMarket(args: {
+  marketIdBytes32: string;
+  liquidity: number;      // initial USDD deposit
+}): Promise<{ txHash: string }>;
 ```
 
-- `buyShares` — C handles the form/route ([apps/web/components/trade-panel.tsx](../apps/web/components/trade-panel.tsx)); A handles only the lines that sign or move value.
-- `settle` — A's pre-funded contract pays a fixed amount to `winnerWallet`. `simulated: true` when the **airbag** fired (testnet flaky) — the UI shows a confirmation either way.
-- **Walking-skeleton stub:** both resolve instantly with a fake `Position` / fake `txHash`. A swaps in real TronLink + TRC-20 behind the same signatures.
+**Fee model** (on-chain):
+- **Trading fee**: 0.1% on every buy and sell
+  - 50% → LP (market creator)
+  - 50% → platform `feePool` (owner withdrawable)
+- **Creation fee**: Fixed 10 USDD per market (paid during `createMarket()`, goes to `feePool`)
+- **Settlement fee** (future): Fixed 1 USDD from winner payout (post-hackathon)
+
+### AMM Contract Status Transitions
+
+```
+Market created (10 USDD creation fee paid)
+    │
+    ├── Buy/Sell trades occur ←── 0.1% fee on each
+    │
+    ├── Market expires → AI resolve → consensus ≥ threshold
+    │       │
+    │       ├── Settle: pay winners from pool balance
+    │       └── LP withdraws remaining pool (minus feePool)
+    │
+    └── Dispute: consensus < threshold → human review window
+```
+
+- **Walking-skeleton stub:** both buy/sell resolve instantly with a fake `TransactionResult`. A swaps in real TronLink + AMM contract behind the same signatures.
 
 ---
 
@@ -96,9 +180,44 @@ RESOLVE uses a **Web2 DB (Supabase) + TRON chain** hybrid storage architecture. 
 |------|:-----:|-----------|
 | Market metadata (question, description, category, status) | **Supabase** (`markets` table) | Search/filter/sort needs < 10ms; chain queries take 3-5s |
 | Agent definitions and inference records | **Supabase** (`agent_consensus`, `agent_votes`) | AI logs don't need chain-level immutability |
-| User positions (buy records) | **Supabase** (`positions`) + `tx_hash` link | Fast portfolio rendering; `tx_hash` provides on-chain verifiability |
-| **Asset settlement (USDD payout)** | **TRON chain** (settlement contract) | Trust-minimized — money must move on-chain |
+| User positions (balances per market) | **Supabase** (`positions`) + `tx_hash` link | Fast portfolio rendering; `tx_hash` provides on-chain verifiability |
+| **Asset settlement (USDD payout)** | **TRON chain** (settlement/AMM contract) | Trust-minimized — money must move on-chain |
+| **Platform fee pool** | **TRON chain** (contract state) | Economic loop requires trustless execution |
 | **$HTX staking / incentives** | **TRON chain** (smart contract) | Economic loop requires trustless execution |
+
+### Position Schema (Updated for AMM)
+
+Each position now tracks **YES and NO balance per market per wallet**, instead of single-buy records:
+
+```
+positions table (Supabase):
+  id            UUID PRIMARY KEY
+  market_id     UUID → markets(id)
+  wallet_address TEXT
+  yes_balance   NUMERIC(20,6) DEFAULT 0    ← YES shares held
+  no_balance    NUMERIC(20,6) DEFAULT 0    ← NO shares held
+  total_bought  NUMERIC(20,6) DEFAULT 0    ← total USDD spent (for PnL calcs)
+  total_sold    NUMERIC(20,6) DEFAULT 0    ← total USDD received
+  updated_at    TIMESTAMPTZ
+  UNIQUE(market_id, wallet_address)        ← one row per wallet per market
+```
+
+`tx_hash` is no longer on `positions` directly. Each trade (buy or sell) is recorded in a new `trades` table:
+
+```
+trades table (Supabase):                   ← NEW
+  id            UUID PRIMARY KEY
+  market_id     UUID → markets(id)
+  wallet_address TEXT
+  side          TEXT CHECK('YES'|'NO')
+  type          TEXT CHECK('buy'|'sell')   ← buy or sell
+  shares        NUMERIC(20,6)              ← shares involved
+  price         NUMERIC(10,6)              ← execution price
+  usdd_amount   NUMERIC(20,6)              ← USDD amount
+  fee           NUMERIC(20,6) DEFAULT 0    ← platform fee
+  tx_hash       TEXT                       ← on-chain proof
+  created_at    TIMESTAMPTZ
+```
 
 ### Interface: Supabase Data Layer
 
@@ -110,40 +229,54 @@ async function getMarket(slug: string): Promise<Market>;
 async function listMarkets(filter?: { status?: MarketStatus; category?: Category }): Promise<Market[]>;
 async function updateMarketStatus(marketId: string, status: MarketStatus): Promise<void>;
 
-// Positions
-async function getPositions(walletAddress: string): Promise<Position[]>;
-async function createPosition(pos: Omit<Position, 'id'>): Promise<Position>;
+// Positions (per wallet per market, with YES/NO balance tracking)
+async function getPosition(marketId: string, wallet: string): Promise<Position | null>;
+async function listPositionsByWallet(wallet: string): Promise<Position[]>;
+async function updatePosition(marketId: string, wallet: string, delta: {
+  side: 'YES' | 'NO';
+  shares: number;           // positive = buy, negative = sell
+  usddAmount: number;       // positive = spent, negative = received
+  fee: number;
+  txHash: string;
+}): Promise<void>;
+async function insertTrade(trade: Omit<Trade, 'id'>): Promise<Trade>;
 
 // Consensus & Agent votes
 async function saveConsensus(marketId: string, consensus: AIConsensus): Promise<void>;
 async function getConsensus(marketId: string): Promise<AIConsensus | null>;
 ```
 
-### Interface: TRON Settlement
+### Interface: TRON Settlement & AMM
 
 ```ts
 // Dev A implements these; C calls them from API routes.
 
-// Settlement — the only on-chain contract call in the hero flow
-async function settleOnChain(args: {
-  marketId: string;
-  outcome: Outcome;
-  winnerWallet: string;
-  amount: number;              // settlement amount in USDD
-}): Promise<{ txHash: string; status: "confirmed" | "simulated" }>;
+// AMM state (read-only, Trongrid)
+async function getPoolState(marketId: string): Promise<{
+  yesSupply: number; noSupply: number;
+  yesPrice: number; noPrice: number;
+  liquidity: number; feePool: number;
+}>;
 
-// Query staking info (read-only, Trongrid)
-async function getMarketStake(marketId: string): Promise<{ stakedHTX: number; staker: string }>;
+// Client-side buy (TronLink sign)
+async function buyShares(marketId: string, side: Outcome, amountSun: bigint): Promise<{ txHash: string }>;
+
+// Client-side sell (TronLink sign)
+async function sellShares(marketId: string, side: Outcome, shares: bigint): Promise<{ txHash: string }>;
+
+// Owner-only settlement
+async function settle(marketId: string, outcome: Outcome, winner: string, payoutSun: bigint): Promise<string>;
+async function claimFees(): Promise<string>;                    // owner withdraws feePool
 ```
 
 ### Bridge
 
 The two systems connect via two fields:
 
-- **`tx_hash`** on `Position` — links a Supabase buy record to its TRON transaction so anyone can verify on Tronscan.
-- **`wallet_address`** on `Position` / `Market` — the user's TRON wallet is the foreign key between Web2 identity and on-chain value.
+- **`tx_hash`** on `trades` — links a Supabase trade record to its TRON transaction so anyone can verify on Tronscan.
+- **`wallet_address`** on `Position` / `Trade` — the user's TRON wallet is the foreign key between Web2 identity and on-chain value.
 
-This is **not a pure on-chain design**. For the hero demo, Supabase stores everything that needs fast reads (market list, positions, agent inference logs), while TRON handles only asset settlement and staking. The narrative: *"Web2 speed where you need it, Web3 trust where it matters."*
+This is **not a pure on-chain design**. For the hero demo, Supabase stores everything that needs fast reads (market list, positions, agent inference logs), while TRON handles only AMM settlement and staking. The narrative: *"Web2 speed where you need it, Web3 trust where it matters."*
 
 ---
 

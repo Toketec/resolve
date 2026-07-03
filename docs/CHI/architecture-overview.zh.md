@@ -93,6 +93,7 @@
 |-------|------|--------|:----:|
 | `POST /api/markets/:slug/resolve` | 触发AI解析 | @resolve/ai → Claude API | 需开发 |
 | `POST /api/buy` | 买入仓位 | TronLink签名 → TRON测试网 | 需开发 |
+| `POST /api/sell` | 卖出仓位 | TronLink签名 → AMM合约 | 需开发 |
 | `POST /api/settle` | 结算盈利 | TRON合约调用 | 需开发 |
 | `GET /api/price/:symbol` | 价格数据 | HTX公开API缓存 | 需开发 |
 | `GET /api/agent/identity` | Agent 8004身份 | B.AI 8004 Registry | 需开发 |
@@ -116,8 +117,9 @@
 
 | 组件 | 技术 | 说明 |
 |------|------|------|
-| 结算合约 | Solidity + TVM | 部署到 TRON Shasta 测试网，预注资USDD |
-| 钱包连接 | TronLink Extension | 用户通过浏览器扩展连接 |
+| 结算 & AMM 合约 | Solidity + TVM | 线性债券曲线 AMM：`buyShares()`、`sellShares()`、`settle()` + 费用池。部署到 TRON Shasta 测试网 |
+| AMM 定价 | 线性债券曲线 | `YES_price = 0.5 + net/(2*L)`。价格钳制 [0.01, 0.99]。0.1% 交易费，LP 与平台各 50% |
+| 钱包连接 | TronLink Extension | 用户通过浏览器扩展签名 buy/sell/createMarket |
 | 节点服务 | Trongrid | 免费公共节点，无需自建节点 |
 | Agent身份 | B.AI 8004 Protocol | Agent在TRON上的链上身份注册 |
 | Agent支付 | B.AI x402 Protocol | Agent自主支付结算费 |
@@ -131,15 +133,17 @@
 **与 Polymarket (UMA) 的对比**:
 Polymarket 的裁决层依赖 **UMA 代币持有者人工投票**（数天周期、结果不透明、灰色问题易争议）。我们的 AI Agent 直接替代这层——市场到期后 6 个 Agent 并行推理，7 秒完成全方位 6 维裁决→共识→触发合约结算。
 
-**完整流程闭环（4 层分工）**:
+**完整流程闭环（5 层分工，含 AMM）**:
 ```
-阶段                    用户做          Agent做                   系统做             合约做
-─────────────────────────────────────────────────────────────────────────────────────────────
-① 钱包连接(1min)     连TronLink+签名     —                       UI回显地址            —
-② 买入预测(30s)      选YES+金额+签名     —                       写Supabase持仓       buyShares()
-③ AI裁决(7s)         纯旁观             6 Agent 并行推理(6LLM)    共识计算+写DB+动画     —
-                                          → 6 票加权共识
-④ 链上结算(10s)      Owner签名settle    —                       调合约接口            settle()
+阶段                    用户做          Agent做                     系统做               合约做
+───────────────────────────────────────────────────────────────────────────────────────────────────
+① 钱包连接(1min)     连TronLink+签名     —                           UI回显地址            —
+② 买入/卖出(30s)     选边+金额+签名      —                           计算AMM价格           buyShares()/
+                                                                     更新仓位              sellShares()
+③ 市场到期(自动)      —                   6 Agent 并行推理(6LLM)     共识计算+DB+UI动画     —
+                                            → 6 票加权共识
+④ 链上结算(10s)      Owner签名settle      —                          调合约接口            settle()
+⑤ 费用领取(owner)    Owner领取费用        —                           —                    claimFees()
 ```
 
 ### 2.5 数据层
@@ -147,12 +151,14 @@ Polymarket 的裁决层依赖 **UMA 代币持有者人工投票**（数天周期
 | 数据 | 存储方式 | 说明 |
 |------|---------|------|
 | 市场价格 | 内存缓存 | 从HTX API获取，缓存5分钟 |
-| 用户仓位 | **Supabase (PostgreSQL)** | `positions` 表，记录购入详情。链上 tx_hash 作为可验证证明 |
+| 用户仓位 | **Supabase (PostgreSQL)** | `positions` 表，`market_id + wallet_address` 唯一约束，分别追踪 YES/NO 份额余额。**按仓位余额而非单笔买入记录** |
+| 交易历史 | **Supabase (PostgreSQL)** | `trades` 表：每笔 buy/sell 单独一行，带 tx_hash 可验证 |
+| 平台费用池 | **TRON 合约状态** | 每笔交易 0.05% 累积在合约 feePool，owner 可取 |
 | 市场数据 | **Supabase (PostgreSQL)** | `markets` 表，包含英雄市场种子数据。**元数据存 Web2 数据库**（快速搜索/排序），质押/结算走 TRON 链 |
 | Agent推理结果 | **Supabase (PostgreSQL)** | `agent_consensus` + `agent_votes` 表 |
 | 共识历史 | **Supabase (PostgreSQL)** | 每次 resolve 结果持久化在 `agent_consensus` |
-| 清算资产 | **TRON Shasta 链** | USDD 转账通过智能合约执行，纯链上不可篡改 |
-| \$HTX 质押 | **TRON 链** | 创建市场时质押\$HTX（防垃圾），链上合约管理 |
+| 清算资产 | **TRON Shasta 链** | USDD 转账通过 AMM 合约的 settle() 执行，纯链上不可篡改 |
+| 创建费 | **TRON 合约状态** | 创建市场固定 10 USDD，入 feePool |
 
 **数据架构决策总结（Hybrid）**:
 - 需要**快速查询/搜索/排序**的数据 → Web2 数据库（Supabase）
@@ -240,7 +246,7 @@ Polymarket 的裁决层依赖 **UMA 代币持有者人工投票**（数天周期
 | SSL证书 | Vercel 自动 Let's Encrypt | $0 |
 | CDN | Vercel Edge Network | $0 |
 | 数据库 | Supabase PostgreSQL（免费500MB） | $0 |
-| **总计** | | **≈ $20-50**（仅AI推理费用）|
+| **总计** | | **≈ $20-50**（仅AI推理费用） |
 
 **对比阿里云方案**: ECS 最低配 ¥500+/月 + 域名备案 10-20工作日 + CDN ¥100+/月 + RDS ¥100+/月 = ❌ 成本高+备案慢
 
@@ -323,7 +329,7 @@ Polymarket 的裁决层依赖 **UMA 代币持有者人工投票**（数天周期
 **不选择纯 Web2 的理由**:
 - 资产结算如果不在链上，就不叫 Web3 项目
 - 评委的评分维度明确包含「AI/Web3 应用程度」
-- \$HTX 质押/Agent 激励需要在链上产生可信的经济循环
+- \\$HTX 质押/Agent 激励需要在链上产生可信的经济循环
 
 ### ADR-006（赛后优化）: Event 驱动索引器替代 API 双写
 
@@ -360,6 +366,47 @@ async function indexEvents() {
 - 数据来源从前端 POST 变为**链上 events 解析** → 不可篡改
 - 新增 `PositionChanged` event 让链上可查询所有用户持仓历史
 - 与纯链上查询方案相比，索引器保证前端毫秒级响应
+
+### ADR-007: AMM 线性债券曲线 + 双向交易（Buy/Sell）+ 费用模型
+
+**选择**: 线性债券曲线（Linear Bonding Curve）AMM + 0.1% 费率 + 创建费 10 USDD + 唯一 LP（市场创建者）
+
+**触发条件**: 2026-07-02 — 用户发现 TradePanel 只有 Buy 没有 Sell，要求匹配 Polymarket 的 AMM 交易体验
+
+**核心公式**:
+
+```
+YES_price = 0.5 + net / (2 * L)
+NO_price  = 1 - YES_price
+
+net: 累计 YES 买入额 - 累计 NO 买入额 (USDD)
+L:   初始流动性 (USDD)，market creator 创建时注入
+价格范围: [0.01, 0.99]
+```
+
+**费用分配**:
+
+| 费用 | 金额 | 去向 |
+|:----|:----|:-----|
+| 交易费 | 0.1%（每笔 buy/sell） | 50% → LP（市场创建者），50% → 平台 feePool |
+| 创建费 | 10 USDD（固定） | 全部 → 平台 feePool |
+| 结算费（远期） | 1 USDD（可选） | 全部 → 平台 feePool |
+
+**选择线性曲线而非 Constant Product (x*y=k) 的理由**:
+1. **合约内整数运算简单** — 线性公式纯加减乘除，gas 低，无精度问题
+2. **价格范围可控** — 自动钳制在 [1¢, 99¢]，不会出现极端滑点
+3. **流动性效率** — L 固定，价格对成交量的响应预知，LP 风险可计算
+4. **hackathon 可演示** — 比 Uni v2 的 AMM 少 50% 的代码量
+
+**为什么不走纯链上（不做索引器就上链）**:
+- `positions` 表走 SQL 更新（`UPDATE positions SET yes_balance = yes_balance + 1`）比链上 event 扫描快 500x
+- 链上只做资产层（锁 USDD、价格计算、费用记账），DB 做展示层
+- 核心原则不变: "Web2 speed where you need it, Web3 trust where it matters"
+
+**不选择多 LP（外部做市商）的理由（Hackathon 阶段）**:
+1. 多 LP 需要完善的收益分配算法（类 Uni v2 的 LP share），增加 100+ 行合约代码
+2. 演示场景下单一 LP（market creator）足以展示 AMM 定价 + 买卖功能
+3. 赛后路线图明确将多 LP 列为 Phase 2 高优先级
 
 ---
 
@@ -421,7 +468,7 @@ packages/ai
 | 域名 | 默认vercel.app | ✅ 不加自定义域名，省成本 |
 | 阿里云 | 未明确 | ❌ 放弃，全栈Vercel |
 | ICP备案 | 未讨论 | ✅ 明确避免 — Vercel全球CDN |
-| 基础设施成本 | 未计算 | ✅ 明确为 $20-50（仅AI推理）|
+| 基础设施成本 | 未计算 | ✅ 明确为 $20-50（仅AI推理） |
 
 ---
 

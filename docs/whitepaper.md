@@ -90,11 +90,18 @@ RESOLVE divides the prediction market lifecycle into four distinct layers, each 
 | Step | Action | Layer | Duration |
 |:----:|:--------|:-----:|:--------:|
 | ① | Connect TronLink + sign | Wallet | 5s |
-| ② | Pick YES side + amount + sign | Wallet | 10s |
+| ② | Pick YES/NO side + amount + sign — **OR sell existing shares** | Wallet | 10s |
 | ③ | (Automatic) Market expires → 6 Agents deliberate | Agent | ~5s |
 | ④ | Owner signs settlement → On-chain payout | Contract | 5s |
+| ⑤ | Owner claims accumulated fees (any time) | Contract | 5s |
 
 **Total user operations**: 3-4 clicks. **Total resolution time**: ~5 seconds.
+
+**AMM fee summary per trade**:
+```
+User buys $100 YES @ 55¢ → receives $100 / 0.55 = 181.8 shares
+Fee: $100 × 0.1% = $0.10 → LP gets $0.05, platform gets $0.05
+```
 
 ### 2.1 Critical Distinction: Agent ≠ Trading Advisor
 
@@ -252,16 +259,49 @@ status     = confidence >= 0.65 ? "consensus" : "dispute"
 
 ---
 
-## 6. Smart Contract & On-Chain Settlement
+## 6. Smart Contract — AMM & On-Chain Settlement
 
-### 6.1 Settlement Contract
+The settlement contract is deployed on TRON Shasta testnet. It implements a **linear bonding curve AMM** for both buy and sell operations, replacing the previous single-direction (buy-only) model.
 
-The settlement contract is deployed on TRON Shasta testnet. Its responsibilities:
+### 6.1 AMM Pricing Model
 
-1. **Pre-funding**: Contract holds a pool of USDD test tokens at deployment
-2. **buyShares()**: Records user buy intent with associated signature from TronLink
-3. **settle()**: After AI consensus, transfers USDD from contract pool to winning wallets
-4. **Airbag mode**: When testnet is unstable, returns `{ simulated: true }` to keep the demo flowing
+Each market is an independent liquidity pool. The creator (single LP) deposits initial USDD at creation. All trading prices are derived from the pool state:
+
+```
+YES_price = 0.5 + net / (2 * L)
+NO_price  = 1 - YES_price
+
+net: cumulative YES volume bought - cumulative NO volume bought (in USDD)
+L:   initial liquidity deposited by market creator (in USDD)
+Price clamped to [0.01, 0.99]
+```
+
+**Example** (market with L = 1,000 USDD):
+
+| Action | net change | YES price | NO price |
+|:-------|:----------:|:---------:|:--------:|
+| Initial | net = 0 | 50% | 50% |
+| Buy $100 YES | net += 100 | **55%** | 45% |
+| Buy $200 NO | net -= 200 | **45%** | 55% |
+| Sell 50 YES shares (net ~55) | net -= 55 | **~43%** | 57% |
+
+### 6.2 Fees
+
+| Fee | Rate | Allocation |
+|:----|:----|:-----------|
+| Trading fee | 0.1% (buy AND sell) | 50% → LP, 50% → platform `feePool` |
+| Creation fee | 10 USDD (fixed) | 100% → platform `feePool` |
+| Settlement fee | 0 (post-hackathon: 1 USDD optional) | — |
+
+### 6.3 Contract Functions
+
+1. **createMarket()**: Creator deposits L USDD + pays 10 USDD creation fee
+2. **buyShares()**: User sends USDD → receives shares at AMM price + pays 0.1% fee
+3. **sellShares()**: User sends shares → receives USDD at AMM price + pays 0.1% fee
+4. **settle()**: After AI consensus, transfers USDD from pool to winning wallets
+5. **claimFees()**: Owner withdraws accumulated feePool
+6. **getPoolState()**: Read-only query returning pool state (yesSupply, noSupply, prices, liquidity, feePool)
+7. **Airbag mode**: When testnet is unstable, returns `{ simulated: true }` to keep the demo flowing
 
 ### 6.2 B.AI 8004 — On-Chain Agent Identity
 
@@ -390,10 +430,11 @@ This market is the walking skeleton demo that exercises the entire RESOLVE pipel
 
 - ✅ 6-agent prompt engineering and parallel reasoning pipeline
 - ✅ TRON testnet settlement with USDD
+- ✅ AMM linear bonding curve (buy + sell + fee)
 - ✅ B.AI 8004 agent identity registration
 - ✅ B.AI x402 autonomous micropayment
 - ✅ HTX ecosystem integrations (HTX API, \$HTX economy display)
-- ✅ Walking skeleton end-to-end demo
+- ✅ Walking skeleton end-to-end demo with real trades
 
 ### Phase 2 — Post-Hackathon (Q3-Q4 2026)
 
