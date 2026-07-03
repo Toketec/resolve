@@ -82,6 +82,8 @@ export type MessageKey =
   | "footer.docs"
   | "footer.terms"
   | "footer.privacy"
+  | "footer.team"
+  | "footer.xTwitter"
   | "selector.label"
   | "selector.search"
   | "selector.saved"
@@ -183,6 +185,8 @@ const en: Dict = {
   "footer.docs": "Docs",
   "footer.terms": "Terms",
   "footer.privacy": "Privacy",
+  "footer.team": "Team",
+  "footer.xTwitter": "X/Twitter",
 
   "selector.label": "Language",
   "selector.search": "Search…",
@@ -356,6 +360,9 @@ const zh: Dict = {
   "footer.docs": "文档",
   "footer.terms": "条款",
   "footer.privacy": "隐私",
+  "footer.team": "团队",
+  "footer.xTwitter": "X/Twitter",
+
   "selector.label": "语言",
   "selector.search": "搜索…",
   "selector.saved": "已保存",

@@ -32,21 +32,19 @@ export function SiteFooter() {
             { href: "/portfolio", label: t("nav.portfolio") },
           ]} />
           <Col title={t("footer.protocol")} tone="text-pitch-700" items={[
-            { href: aiConsensusHref, label: t("footer.aiConsensus") },
-            { href: disputeModeHref, label: t("footer.disputeMode") },
-            { href: registryHref, label: t("footer.registry") },
-            { href: whitepaperHref, label: t("footer.whitepaper") },
+            { href: aiConsensusHref, label: t("footer.aiConsensus"), external: true },
+            { href: disputeModeHref, label: t("footer.disputeMode"), external: true },
+            { href: registryHref, label: t("footer.registry"), external: true },
+            { href: whitepaperHref, label: t("footer.whitepaper"), external: true },
           ]} />
           <Col title={t("footer.ecosystem")} tone="text-crowd-700" items={[
             { href: "https://www.htx.com/", label: "HTX ecosystem", external: true },
             { href: "https://b.ai/", label: "B.AI compute", external: true },
-            { href: "https://www.htxdao.com/hackathon/", label: "Genesis hackathon", external: true },
+            { href: "https://htxdao-1.gitbook.io/htx-genesis-hackathon", label: "Genesis hackathon", external: true },
           ]} />
-          <Col title={t("footer.company")} tone="text-magenta-700" items={[
-            { href: "#", label: t("footer.about") },
-            { href: "#", label: t("footer.docs") },
-            { href: "#", label: t("footer.terms") },
-            { href: privacyHref, label: t("footer.privacy") },
+          <Col title={t("footer.team")} tone="text-magenta-700" items={[
+            { href: "https://x.com/resolve_prediction", label: t("footer.xTwitter"), external: true },
+            { href: privacyHref, label: t("footer.privacy"), external: true },
           ]} />
         </div>
 
