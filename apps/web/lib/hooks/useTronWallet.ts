@@ -43,6 +43,8 @@ declare global {
 
 const SHASTA_HOST = "shasta";
 const NILE_HOST = "nile";
+const WALLET_STORAGE_KEY = "resolve_wallet";
+const WALLET_DISCONNECTED_KEY = "resolve_wallet_disconnected";
 
 function detectNetwork(host?: string): TronNetwork {
   if (!host) return "unknown";
@@ -62,9 +64,51 @@ const INITIAL: TronWalletState = {
   error: null,
 };
 
+/** 尝试从 localStorage 恢复上次连接的地址（仅读取，不标记 connected） */
+function readSavedWallet(): { address: string; network: TronNetwork } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(WALLET_STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { address?: string; network?: string };
+    if (saved?.address) {
+      return { address: saved.address, network: (saved.network as TronNetwork) || "unknown" };
+    }
+  } catch {}
+  return null;
+}
+
+function persistWallet(address: string, network: TronNetwork) {
+  try { localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify({ address, network })); } catch {}
+}
+
+function clearSavedWallet() {
+  try { localStorage.removeItem(WALLET_STORAGE_KEY); } catch {}
+}
+
+/** 用户是否主动断开过（即使 TronLink 仍授权，也不应自动重连） */
+function isExplicitlyDisconnected(): boolean {
+  if (typeof window === "undefined") return false;
+  try { return localStorage.getItem(WALLET_DISCONNECTED_KEY) === "1"; } catch { return false; }
+}
+
+function markDisconnected() {
+  try { localStorage.setItem(WALLET_DISCONNECTED_KEY, "1"); } catch {}
+}
+
+function clearDisconnectedFlag() {
+  try { localStorage.removeItem(WALLET_DISCONNECTED_KEY); } catch {}
+}
+
 export function useTronWallet() {
-  const [state, setState] = useState<TronWalletState>(INITIAL);
+  // 初始化时从 localStorage 恢复上次的地址/网络，等 provider 就绪后再确认 connected 状态
+  const [state, setState] = useState<TronWalletState>(() => {
+    const saved = readSavedWallet();
+    if (saved) return { ...INITIAL, address: saved.address, network: saved.network };
+    return INITIAL;
+  });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const restoredRef = useRef(false);
 
   // 读取当前注入的 tronWeb 地址 + 网络（连接后用）
   const syncFromProvider = useCallback(() => {
@@ -73,15 +117,18 @@ export function useTronWallet() {
     const base58 = tronWeb?.defaultAddress?.base58;
     const host = tronWeb?.fullNode?.host;
     if (base58 && typeof base58 === "string") {
+      const network = detectNetwork(host);
       setState((s) => ({
         ...s,
         connected: true,
         address: base58,
-        network: detectNetwork(host),
+        network,
         error: null,
       }));
+      persistWallet(base58, network);
     } else {
       setState((s) => ({ ...s, connected: false, address: "" }));
+      clearSavedWallet();
     }
   }, []);
 
@@ -93,6 +140,8 @@ export function useTronWallet() {
       const installed = Boolean(window.tronLink || window.tronWeb);
       if (installed) {
         setState((s) => ({ ...s, installed: true }));
+        // 用户主动断开过 → 不自动恢复，等待用户手动 Connect
+        if (isExplicitlyDisconnected()) return true;
         // 若已授权（tronWeb ready），自动反映已连接状态
         const tronWeb = window.tronLink?.tronWeb ?? window.tronWeb;
         if (tronWeb?.defaultAddress?.base58) syncFromProvider();
@@ -109,6 +158,30 @@ export function useTronWallet() {
     }
   }, [syncFromProvider]);
 
+  // 从 localStorage 恢复连接状态（处理 provider 注入慢于第一轮检测窗口的情况）
+  useEffect(() => {
+    if (typeof window === "undefined" || restoredRef.current) return;
+    const saved = readSavedWallet();
+    if (!saved || isExplicitlyDisconnected()) return;
+
+    restoredRef.current = true;
+    let tries = 0;
+    const id = setInterval(() => {
+      tries++;
+      const tronWeb = window.tronLink?.tronWeb ?? window.tronWeb;
+      if (tronWeb?.defaultAddress?.base58) {
+        clearInterval(id);
+        syncFromProvider();
+      } else if (tries > 25) {
+        // ~7.5s 超时 → provider 始终未就绪，清除残留数据
+        clearInterval(id);
+        clearSavedWallet();
+        setState((s) => ({ ...s, connected: false, address: "" }));
+      }
+    }, 300);
+    return () => clearInterval(id);
+  }, [syncFromProvider]);
+
   // 监听账户/网络变更
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -123,6 +196,8 @@ export function useTronWallet() {
         msg.action === "disconnect"
       ) {
         if (msg.action === "disconnect") {
+          markDisconnected();
+          clearSavedWallet();
           setState((s) => ({ ...s, connected: false, address: "" }));
         } else {
           syncFromProvider();
@@ -140,6 +215,8 @@ export function useTronWallet() {
       setState((s) => ({ ...s, error: "TronLink not installed" }));
       return;
     }
+    // 用户重新连接 → 清除主动断开标记
+    clearDisconnectedFlag();
     setState((s) => ({ ...s, connecting: true, error: null }));
     try {
       const res = (await provider.request({ method: "tron_requestAccounts" })) as
@@ -163,8 +240,10 @@ export function useTronWallet() {
   }, [syncFromProvider]);
 
   const disconnect = useCallback(() => {
-    // TronLink 无编程式断开 API；清本地状态即可（用户在扩展中真正断开）
+    // TronLink 无编程式断开 API；清本地状态 + 标记主动断开，防止刷新后自动重连
     if (pollRef.current) clearInterval(pollRef.current);
+    markDisconnected();
+    clearSavedWallet();
     setState((s) => ({ ...INITIAL, installed: s.installed }));
   }, []);
 
