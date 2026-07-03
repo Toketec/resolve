@@ -36,6 +36,7 @@ export interface Market {
   creator: { name: string; address: string };
   imageHint: string; // category emoji or short
   consensus?: AIConsensus;
+  settlementTxHash?: string | null;
   related?: string[];
 }
 

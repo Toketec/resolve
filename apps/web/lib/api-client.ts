@@ -122,3 +122,7 @@ export function fetchPositions(wallet: string): Promise<Position[]> {
 export function fetchTrades(wallet: string): Promise<Trade[]> {
   return apiGet<Trade[]>(`/api/trades?wallet=${encodeURIComponent(wallet)}`);
 }
+
+export function fetchMarketTrades(slug: string): Promise<Trade[]> {
+  return apiGet<Trade[]>(`/api/markets/${encodeURIComponent(slug)}/trades`);
+}

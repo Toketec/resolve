@@ -109,6 +109,20 @@ export async function listPositionsByWallet(
   return (data ?? []) as PositionRow[];
 }
 
+/** 获取某市场下所有仓位（含关联 market 信息，按时间倒序） */
+export async function listPositionsByMarket(
+  marketId: string,
+): Promise<PositionRow[]> {
+  const { data, error } = await getAnyClient()
+    .from('positions')
+    .select('*, markets(*)')
+    .eq('market_id', marketId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`Failed to list positions by market: ${error.message}`);
+  return (data ?? []) as PositionRow[];
+}
+
 /** 记录新仓位 */
 export async function insertPosition(input: {
   market_id: string;

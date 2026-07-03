@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, FileText } from "lucide-react";
+import { ArrowUpRight, ExternalLink, FileText } from "lucide-react";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { StatusChip } from "@/components/ui/status-chip";
 import { TradePanel } from "@/components/trade-panel";
@@ -8,9 +8,10 @@ import { PriceChart } from "@/components/price-chart";
 import { OracleDeliberation } from "@/components/oracle-deliberation";
 import { marketBySlug, MOCK_TRADES } from "@/lib/mock";
 import { MOCK_AGENTS } from "@/lib/mock/agents";
-import { fetchMarket, fetchAgents } from "@/lib/api-client";
+import { fetchMarket, fetchAgents, fetchMarketTrades } from "@/lib/api-client";
 import { derive8004Id, type ApiAgent } from "@/lib/mappers";
 import { formatPct, formatRelative, formatUSD, shortAddr } from "@/lib/utils";
+import { TRONSCAN_SHASTA } from "@/lib/constants";
 import type { Market } from "@/lib/types";
 
 interface PageProps {
@@ -44,7 +45,9 @@ export default async function MarketDetailPage({ params }: PageProps) {
   }
   if (!market) notFound();
 
-  const trades = MOCK_TRADES.filter((t) => t.marketId === market.id).slice(0, 8);
+  const trades = await fetchMarketTrades(slug).catch(() =>
+    MOCK_TRADES.filter((t) => t.marketId === market.id).slice(0, 8),
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
@@ -172,6 +175,24 @@ export default async function MarketDetailPage({ params }: PageProps) {
               <Row label="Created" value={formatRelative(market.createdAt)} />
               <Row label="Expires" value={formatRelative(market.expiresAt)} />
               <Row label="Creator" value={market.creator.name} sub={shortAddr(market.creator.address)} />
+              {market.settlementTxHash && (
+                <div className="flex items-center justify-between px-4 py-3">
+                  <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
+                    Deployment
+                  </p>
+                  <a
+                    href={`${TRONSCAN_SHASTA}/#/transaction/${market.settlementTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-1 text-right"
+                  >
+                    <p className="text-sm font-semibold text-ink underline decoration-line underline-offset-2 group-hover:text-pitch-700 transition">
+                      {shortAddr(market.settlementTxHash)}
+                    </p>
+                    <ExternalLink className="size-3 text-muted group-hover:text-ink transition" />
+                  </a>
+                </div>
+              )}
               <Row label="Category" value={market.category} />
               <Row label="Threshold" value={`${Math.round((market.consensus?.threshold ?? 0.65) * 100)}%`} />
             </div>

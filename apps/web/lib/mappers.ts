@@ -97,6 +97,7 @@ export function marketRowToMarket(row: MarketRow): Market {
     creator: fromMock?.creator ?? { name: "resolve.eth", address: "TR9ZDVVStpH5BgzqSqUYqyZgMYPRmvQGkp" },
     imageHint: fromMock?.imageHint ?? "₿",
     consensus: fromMock?.consensus,
+    settlementTxHash: row.settlement_tx_hash ?? null,
   };
 }
 
