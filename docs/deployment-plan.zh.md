@@ -79,21 +79,29 @@ node scripts/compile.js
 ### 3.2 部署三个合约
 
 ```bash
-# 部署全部（MockUSDD → ResolveSettlement → AgentRegistry + 注册 6 Agent）
+# 部署全部（按顺序：MockUSDD → ResolveSettlement → AgentRegistry + 注册 6 Agent）
 TRON_PRIVATE_KEY=<部署钱包私钥> node scripts/deploy.js all
 ```
 
-部署成功后终端输出三个合约地址，**记下来**：
+部署顺序（后一个依赖前一个的地址）：
 
 ```
-NEXT_PUBLIC_USDD_ADDRESS=TMock...        ← USDD 代币合约地址
-NEXT_PUBLIC_SETTLEMENT_ADDRESS=TSettle... ← 结算合约地址（含 AMM）
-NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=TReg...← Agent 注册合约地址
+① MockUSDD（测试 USDD 代币，含水龙头）
+   ↓ 地址传入构造函数
+② ResolveSettlement（核心结算合约：创建市场、买卖、批量赔付、AMM）
+   ↓
+③ AgentRegistry（Agent 链上身份注册表） + 注册 6 个 Agent
 ```
 
-部署脚本同时会：
-- 在 AgentRegistry 中注册 6 个 Agent（bull-1 ~ neut-2），各分配一个 TRON 地址
-- 产出 `deployment-output.json` 文件
+部署成功后终端输出三个地址，**每个都要记下来**：
+
+```
+📋 NEXT_PUBLIC_USDD_ADDRESS="TMock..."
+📋 NEXT_PUBLIC_SETTLEMENT_ADDRESS="TSettle..."
+📋 NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS="TReg..."
+```
+
+> ⚠️ `deployment-output.json` 文件中**只记录了 AgentRegistry 的信息**。USDD 和 Settlement 的地址在终端输出中，部署人员需要手动从终端复制。
 
 ### 3.3 链上数据同步到数据库
 

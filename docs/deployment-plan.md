@@ -74,20 +74,29 @@ Build artifacts:
 ### 3.2 Deploy all contracts
 
 ```bash
+# Deploy all (in order: MockUSDD → ResolveSettlement → AgentRegistry + register 6 Agents)
 TRON_PRIVATE_KEY=<wallet private key> node scripts/deploy.js all
 ```
 
-On success, terminal outputs 3 contract addresses — **save them**:
+Deployment order (each depends on the previous address):
 
 ```
-NEXT_PUBLIC_USDD_ADDRESS=TMock...        
-NEXT_PUBLIC_SETTLEMENT_ADDRESS=TSettle... 
-NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=TReg...
+① MockUSDD (test USDD token with faucet)
+   ↓ address passed to constructor
+② ResolveSettlement (core contract: create market, buy, sell, settleBatch, AMM)
+   ↓
+③ AgentRegistry (agent identity registry) + register 6 Agents
 ```
 
-The deploy script also:
-- Registers 6 Agents (bull-1 ~ neut-2) in AgentRegistry
-- Writes `deployment-output.json`
+On success, terminal outputs 3 addresses — **save each one**:
+
+```
+📋 NEXT_PUBLIC_USDD_ADDRESS="TMock..."
+📋 NEXT_PUBLIC_SETTLEMENT_ADDRESS="TSettle..."
+📋 NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS="TReg..."
+```
+
+> ⚠️ The `deployment-output.json` file **only stores AgentRegistry info**. USDD and Settlement addresses are printed to terminal only — the deployer must copy them manually.
 
 ### 3.3 Sync on-chain addresses to database
 
