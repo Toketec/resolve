@@ -15,7 +15,8 @@
 | [judge-qa.md](./judge-qa.md) | Judge Q&A preparation — technical deep dives on HTX ecosystem, AI system design, Hybrid data architecture, $HTX economy, expected questions |
 | [workload-split.md](./workload-split.md) | The 3-dev split (A / B / C) — vertical slices with sequencing priorities and contract boundaries |
 | [api-contracts.md](./api-contracts.md) | Day-1 interfaces — Resolution, Trade & Settle, Price Feed, B.AI integration, and Hybrid Data Layer |
-| [competition-strategy.md](./competition-strategy.md) | Competition landscape — advancement pipeline, scoring strategy, track positioning, risk mitigation, stage deliverables |
+|| [competition-strategy.md](./competition-strategy.md) | Competition landscape — advancement pipeline, scoring strategy, track positioning, risk mitigation, stage deliverables |
+|| [video-script.md](./video-script.md) | 40-second product video script (即梦 AI prompts) + screenshot/recording material guide for pitch |
 
 ### Root-level documents
 

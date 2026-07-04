@@ -15,8 +15,9 @@ RESOLVE 是为 **HTX Genesis 黑客松**打造的 AI 原生预测市场。核心
 | [judge-qa.zh.md](./judge-qa.zh.md) | 决赛评委 Q&A 预判——HTX 生态、AI 架构、经济模型、常见质疑 |
 | [workload-split.zh.md](./workload-split.zh.md) | 三位开发者分工（A 链/钱、B AI/路演、C 应用/接缝）及排期 |
 | [api-contracts.zh.md](./api-contracts.zh.md) | 第一天锁定的 5 个跨切片接口契约（解析/交易/价格/B.AI/Hybrid 数据层） |
-| [competition-strategy.zh.md](./competition-strategy.zh.md) | 比赛全景：晋级路径、评分五维、赛道策略、技术战略、风险预判 |
-| [check.md](../../check.md) | 验收方案与测试检查表（AI 自检 + 人工验证，确保每次提交可跑可演） |
+|| [competition-strategy.zh.md](./competition-strategy.zh.md) | 比赛全景：晋级路径、评分五维、赛道策略、技术战略、风险预判 |
+|| [video-script.zh.md](./video-script.zh.md) | 40 秒产品介绍视频剧本（即梦 AI 生成）+ 答辩素材截图/录制建议 |
+|| [check.md](../../check.md) | 验收方案与测试检查表（AI 自检 + 人工验证，确保每次提交可跑可演） |
 
 ## 快速入门
 
