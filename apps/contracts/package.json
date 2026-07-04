@@ -5,7 +5,13 @@
   "description": "RESOLVE settlement contracts (Solidity)",
   "scripts": {
     "compile": "node scripts/compile.js",
-    "deploy:shasta": "node scripts/deploy.js"
+    "compile:MockUSDD": "node scripts/compile.js MockUSDD",
+    "compile:ResolveSettlement": "node scripts/compile.js ResolveSettlement",
+    "compile:AgentRegistry": "node scripts/compile.js AgentRegistry",
+    "deploy:MockUSDD": "node scripts/deploy.js MockUSDD",
+    "deploy:ResolveSettlement": "node scripts/deploy.js ResolveSettlement",
+    "deploy:AgentRegistry": "node scripts/deploy.js AgentRegistry",
+    "deploy:all": "node scripts/deploy.js all"
   },
   "devDependencies": {
     "solc": "^0.8.35",

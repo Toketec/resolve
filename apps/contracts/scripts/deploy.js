@@ -1,80 +1,146 @@
-// 部署到 TRON Shasta 测试网
-// 用法: TRON_PRIVATE_KEY=... node scripts/deploy.js
-//   可选 USDD_ADDRESS=<现有USDD地址>  → 跳过 MockUSDD 部署
-//
-// 流程: (可选)部署 MockUSDD → 部署 ResolveSettlement(usdd) → 打印地址。
-// 注意: 部署需要钱包有测试 TRX（能量/带宽）。0 余额会失败 —— 去水龙头领取:
-//   https://shasta.tronex.io/  或  https://trongrid.io 的 Shasta faucet
-const fs = require("node:fs");
+/**
+ * 部署合约到 TRON Shasta 测试网（按合约名独立部署）
+ *
+ * 用法:
+ *   TRON_PRIVATE_KEY=... node scripts/deploy.js <contract>
+ *
+ *   node scripts/deploy.js MockUSDD          → 只部署 MockUSDD
+ *   node scripts/deploy.js ResolveSettlement → 只部署 ResolveSettlement
+ *   node scripts/deploy.js AgentRegistry     → 部署 AgentRegistry + 注册 6 个 Agent
+ *   node scripts/deploy.js all               → 按序部署全部 (MockUSDD → ResolveSettlement → AgentRegistry)
+ *
+ *   不带参数 → 打印用法说明
+ *
+ * 前置: 先运行 compile（node scripts/compile.js <contract>）
+ * 注意: 部署需要钱包有测试 TRX
+ */
 const path = require("node:path");
-const { TronWeb } = require("tronweb");
+const fs = require("node:fs");
+const {
+  createTronWeb,
+  checkBalance,
+  deployArtifact,
+} = require("./tronweb-helper");
 
-const ROOT = path.join(__dirname, "..");
-const BUILD = path.join(ROOT, "build");
-
-const FULL_HOST = process.env.TRON_FULL_HOST || "https://api.shasta.trongrid.io";
 const PRIVATE_KEY = process.env.TRON_PRIVATE_KEY;
 
-async function main() {
-  if (!PRIVATE_KEY) {
-    console.error("✗ 缺少 TRON_PRIVATE_KEY 环境变量");
-    process.exit(1);
-  }
-  if (!fs.existsSync(path.join(BUILD, "ResolveSettlement.json"))) {
-    console.error("✗ 未找到编译产物，请先运行: pnpm --filter @resolve/contracts compile");
-    process.exit(1);
-  }
+const AGENTS = ["bull-1", "bull-2", "bear-1", "bear-2", "neut-1", "neut-2"];
 
-  const tronWeb = new TronWeb({ fullHost: FULL_HOST, privateKey: PRIVATE_KEY });
-  const me = tronWeb.address.fromPrivateKey(PRIVATE_KEY);
-  console.log(`Deployer: ${me}`);
-  console.log(`Network:  ${FULL_HOST}`);
+function usage() {
+  console.log(`
+用法:  TRON_PRIVATE_KEY=... node scripts/deploy.js <contract>
 
-  const balanceSun = await tronWeb.trx.getBalance(me).catch(() => 0);
-  console.log(`Balance:  ${balanceSun / 1e6} TRX`);
-  if (balanceSun === 0) {
-    console.error(
-      "\n✗ 钱包余额为 0，无法部署。请先到 Shasta 水龙头给该地址充值测试 TRX:\n" +
-        "    https://shasta.tronex.io/   (输入上面的 Deployer 地址)\n" +
-        "  充值后重新运行本脚本。",
-    );
-    process.exit(1);
-  }
+  node scripts/deploy.js MockUSDD          → 只部署 MockUSDD
+  node scripts/deploy.js ResolveSettlement → 只部署 ResolveSettlement
+  node scripts/deploy.js AgentRegistry     → 部署 AgentRegistry + 注册 6 个 Agent
+  node scripts/deploy.js all               → 按序部署全部
 
-  const deploy = async (name, parameters) => {
-    const artifact = JSON.parse(fs.readFileSync(path.join(BUILD, `${name}.json`), "utf8"));
-    const tx = await tronWeb.contract().new({
-      abi: artifact.abi,
-      bytecode: artifact.bytecode,
-      feeLimit: 1_000_000_000,
-      callValue: 0,
-      parameters,
-    });
-    const addr = tronWeb.address.fromHex(tx.address);
-    console.log(`✓ ${name} → ${addr}`);
-    return addr;
-  };
+可选环境变量:
+  TRON_FULL_HOST     TRON 节点 (默认 https://api.shasta.trongrid.io)
+  USDD_ADDRESS       已有 USDD 合约地址 (部署 ResolveSettlement 时可用，跳过 MockUSDD)
+`);
+}
 
-  // 1) USDD（用现有地址或部署 MockUSDD）
-  let usdd = process.env.USDD_ADDRESS;
+// ── 各合约部署逻辑 ──
+
+async function deployMockUSDD(tronWeb) {
+  const addr = await deployArtifact(tronWeb, "MockUSDD", [1_000_000_000_000]);
+  console.log(`\n📋 NEXT_PUBLIC_USDD_ADDRESS="${addr}"`);
+  return addr;
+}
+
+async function deployResolveSettlement(tronWeb) {
+  const usdd = process.env.USDD_ADDRESS;
   if (!usdd) {
-    console.log("\n部署 MockUSDD（初始供应 1,000,000 USDD）…");
-    usdd = await deploy("MockUSDD", [1_000_000_000_000]); // 1e6 * 1e6 decimals
-  } else {
-    console.log(`使用现有 USDD: ${usdd}`);
+    console.error("✗ 缺少 USDD_ADDRESS。请先部署 MockUSDD 并通过 USDD_ADDRESS 环境变量传入，");
+    console.error("  或: node scripts/deploy.js all 一键部署");
+    process.exit(1);
+  }
+  console.log(`使用 USDD: ${usdd}`);
+  const addr = await deployArtifact(tronWeb, "ResolveSettlement", [usdd]);
+  console.log(`\n📋 NEXT_PUBLIC_SETTLEMENT_ADDRESS="${addr}"`);
+  return addr;
+}
+
+async function deployAgentRegistry(tronWeb, deployer) {
+  const addr = await deployArtifact(tronWeb, "AgentRegistry");
+
+  const BUILD = path.join(__dirname, "..", "build");
+  const { abi } = JSON.parse(
+    fs.readFileSync(path.join(BUILD, "AgentRegistry.json"), "utf8"),
+  );
+
+  // 注册 6 个 Agent
+  console.log("\n注册 6 个 Agent（使用部署者地址）…");
+  const registry = await tronWeb.contract(abi, addr);
+
+  for (const id of AGENTS) {
+    try {
+      const tx = await registry.register(id, deployer).send({ feeLimit: 1_000_000 });
+      console.log(`  ✓ ${id} → ${deployer}  (tx: ${tx.slice(0, 10)}…)`);
+    } catch (e) {
+      console.error(`  ✗ ${id} 注册失败: ${e.message}`);
+    }
   }
 
-  // 2) ResolveSettlement(usdd)
-  console.log("\n部署 ResolveSettlement…");
-  const settlement = await deploy("ResolveSettlement", [usdd]);
+  console.log("\n验证:");
+  for (const id of AGENTS) {
+    try {
+      const a = await registry.getAgent(id).call();
+      console.log(`  ${id} → ${a}`);
+    } catch {}
+  }
+
+  console.log(`\n📋 NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS="${addr}"`);
+  console.log(`📋 NEXT_PUBLIC_AGENT_REGISTRY_MODE=live`);
+  return addr;
+}
+
+async function deployAll(tronWeb, deployer) {
+  console.log("━━━ 部署全部合约 ━━━");
+  const usdd = process.env.USDD_ADDRESS || (await deployMockUSDD(tronWeb));
+  process.env.USDD_ADDRESS = usdd;
+  const settlement = await deployResolveSettlement(tronWeb);
+  const registry = await deployAgentRegistry(tronWeb, deployer);
 
   console.log("\n──────────────── 部署完成 ────────────────");
   console.log(`USDD:               ${usdd}`);
   console.log(`ResolveSettlement:  ${settlement}`);
-    console.log("\n下一步: 把地址填入 apps/web/.env.local 或 lib/constants.ts");
-    console.log(`  NEXT_PUBLIC_USDD_ADDRESS = "${usdd}"`);
-    console.log(`  NEXT_PUBLIC_SETTLEMENT_ADDRESS = "${settlement}"`);
-    console.log(`\n创建费 10 USDD 将从部署者钱包扣除（含在 createMarket() 中）。`);
+  console.log(`AgentRegistry:      ${registry}`);
+}
+
+// ── main ──
+
+async function main() {
+  const contract = process.argv[2];
+  if (!contract) {
+    usage();
+    process.exit(0);
+  }
+
+  const valid = ["MockUSDD", "ResolveSettlement", "AgentRegistry", "all"];
+  if (!valid.includes(contract)) {
+    console.error(`✗ 未知合约 "${contract}"，可选: ${valid.join(", ")}`);
+    process.exit(1);
+  }
+
+  const tronWeb = createTronWeb(PRIVATE_KEY);
+  const deployer = await checkBalance(tronWeb);
+
+  switch (contract) {
+    case "MockUSDD":
+      await deployMockUSDD(tronWeb);
+      break;
+    case "ResolveSettlement":
+      await deployResolveSettlement(tronWeb);
+      break;
+    case "AgentRegistry":
+      await deployAgentRegistry(tronWeb, deployer);
+      break;
+    case "all":
+      await deployAll(tronWeb, deployer);
+      break;
+  }
 }
 
 main().catch((e) => {
