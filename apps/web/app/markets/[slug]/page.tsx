@@ -6,11 +6,9 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { TradePanel } from "@/components/trade-panel";
 import { PriceChart } from "@/components/price-chart";
 import { OracleDeliberation } from "@/components/oracle-deliberation";
-import { marketBySlug, MOCK_TRADES } from "@/lib/mock";
-import { MOCK_AGENTS } from "@/lib/mock/agents";
-import { fetchMarket, fetchAgents, fetchMarketTrades } from "@/lib/api-client";
+import { getMarketBySlug, getAgents, getMarketTrades } from "@/lib/data-server";
 import { getPoolState } from "@/lib/contract/settlement";
-import { derive8004Id, type ApiAgent } from "@/lib/mappers";
+import { type ApiAgent } from "@/lib/mappers";
 import { formatPct, formatRelative, formatUSD, shortAddr } from "@/lib/utils";
 import { TRONSCAN_SHASTA } from "@/lib/constants";
 import type { Market } from "@/lib/types";
@@ -19,39 +17,27 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-/** 将 mock/agents.ts 的 Agent 转为 ApiAgent 形状（仅 API 不可用时兜底） */
-function mockToApi(): ApiAgent[] {
-  return MOCK_AGENTS.map((a) => ({
-    ...a,
-    agentId: a.id,
-    roleLabel: a.kind,
-    tier: "active" as const,
-    stance: ((a.tier ?? "NEUT") as "BULL" | "BEAR" | "NEUT"),
-    poweredBy: a.modelHint,
-    ba8004Id: derive8004Id(a.id),
-  }));
-}
-
 export default async function MarketDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  // 从 API 读取市场；失败回退 mock（视觉不变）
+  // 服务端直连 DB；失败回退 mock（无需 HTTP 自调用）
   let market: Market | undefined;
-  let agents: ApiAgent[] = mockToApi();
+  let agents: ApiAgent[] = [];
+
   let poolState: {
     yesPrice: number;
     noPrice: number;
     yesSupply: bigint;
     noSupply: bigint;
-    liquidity: bigint; // USDD sun (6 decimals)
-    feePool: bigint;   // USDD sun (6 decimals)
+    liquidity: bigint;
+    feePool: bigint;
   } | null = null;
 
   try {
-    const [m, a] = await Promise.all([fetchMarket(slug), fetchAgents()]);
+    const [m, a] = await Promise.all([getMarketBySlug(slug), getAgents()]);
     market = m;
-    if (Array.isArray(a) && a.length) agents = a;
-  } catch {
-    market = marketBySlug(slug);
+    agents = a;
+  } catch (err) {
+    console.error(`[MarketDetailPage] data fetch failed for "${slug}":`, err);
   }
   if (!market) notFound();
 
@@ -82,9 +68,10 @@ export default async function MarketDetailPage({ params }: PageProps) {
       }
     : market;
 
-  const trades = await fetchMarketTrades(slug).catch(() =>
-    MOCK_TRADES.filter((t) => t.marketId === displayMarket.id).slice(0, 8),
-  );
+  const trades = await getMarketTrades(slug).catch((err) => {
+    console.error(`[MarketDetailPage] trades fetch failed for "${slug}":`, err);
+    return [];
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">

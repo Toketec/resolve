@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Cpu, Globe2, Newspaper, Radio, ShieldCheck, Activity, TrendingUp, TrendingDown, Scale, Database, BadgeCheck, ExternalLink } from "lucide-react";
-import { MOCK_AGENTS, MOCK_MARKETS } from "@/lib/mock";
-import { fetchAgents, fetchMarkets } from "@/lib/api-client";
+import { MOCK_AGENTS } from "@/lib/mock";
+import { getAgents, getMarkets } from "@/lib/data-server";
 import { formatPct } from "@/lib/utils";
 import { AGENT_REGISTRY_ADDRESS, TRONSCAN_SHASTA } from "@/lib/constants";
 import type { Agent, Market } from "@/lib/types";
@@ -38,15 +38,15 @@ const TONE_BY_INDEX = [
 ];
 
 export default async function AgentsPage() {
-  // 服务端从 API 读取；失败回退 mock（视觉不变）
+  // 服务端直连 DB；失败回退 mock（无需 HTTP 自调用）
   let agents: Agent[] = MOCK_AGENTS;
-  let markets: Market[] = MOCK_MARKETS;
+  let markets: Market[] = [];
   try {
-    const [a, m] = await Promise.all([fetchAgents(), fetchMarkets()]);
+    const [a, m] = await Promise.all([getAgents(), getMarkets()]);
     if (Array.isArray(a) && a.length) agents = a;
     if (Array.isArray(m) && m.length) markets = m;
-  } catch {
-    /* 保持 mock 兜底 */
+  } catch (err) {
+    console.error("[AgentsPage] data fetch failed:", err);
   }
 
   // 检测是否有 Agent 带真实链上地址（DB 已通过 sync 脚本同步）
