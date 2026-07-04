@@ -38,6 +38,7 @@
 
 - [x] `pnpm typecheck` 通过
 - [x] `pnpm build` 通过
+- [x] 代码检查确认: 全部 17 项代码任务已完成（2026-07-04 公孙离确认）
 - [ ] Supabase 中 `market_pool_states` 表存在（需手动执行 Migration）
 - [ ] `GET /api/markets` 返回的市场包含真实链上 `yesPrice`（非 mock 派生值，需先调用 refresh-pools 灌数据）
 - [ ] `/markets` 列表页正常加载，显示 8 个市场 + 真实价格

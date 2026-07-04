@@ -2,7 +2,7 @@
 // 气囊模式：调用 settleSimulated()（标记已结算，不转账）
 // 真实模式：查询赢家持仓 → 按比例计算赔付 → settleBatch() 批量转账
 // 使用服务端 owner 私钥签名（TRON_PRIVATE_KEY 环境变量）。
-import { settleSimulated, settleBatch, getPoolState } from "@/lib/contract/settlement";
+import { settleSimulated, settleBatch, getPoolState, isAirbag } from "@/lib/contract/settlement";
 import { usddBalanceOf } from "@/lib/contract/usdd";
 import { SETTLEMENT_ADDRESS } from "@/lib/constants";
 import { listPositionsByMarket, updateMarket } from "@resolve/db";
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const airbag = process.env.NEXT_PUBLIC_AIRBAG_ENABLED !== "false";
+  const airbag = isAirbag();
 
   try {
     if (airbag) {

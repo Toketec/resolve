@@ -9,4 +9,4 @@
 | T03 | 新增 `createMarket()` 合约封装 | `apps/web/lib/contract/settlement.ts` | ✅ | 函数存在（不要求测试网能实际签名）；导入无类型错误 |
 | T04 | 前端按钮串联（先链后库） | `apps/web/app/create/page.tsx` | ✅ | 点击按钮 → 先上链确认 → 再 POST API 同步 DB → 成功跳转；用户拒绝签名不产生 DB 记录 |
 | T05 | `pnpm typecheck` + `pnpm build` | — | ✅ | 零错误零警告 |
-| T06 | 手动验收 | 浏览器 | ⬜ | 按 check.md 完成所有验收步骤无异常 |
+| T06 | 手动验收 | 浏览器 | ✅ | 按 check.md 完成所有验收步骤无异常 |

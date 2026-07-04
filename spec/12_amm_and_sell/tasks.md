@@ -15,4 +15,4 @@
 | T09 | Recent Trades 改为 API 调用 | `apps/web/app/markets/[slug]/page.tsx` | ✅ | 调 `/api/markets/[slug]/trades` 从 trades 表读取 |
 | T10 | 创建市场加 10 USDD 创建费 | `apps/web/app/create/page.tsx` | ✅ | 部署时 approve 总需（流动性+10 USDD）；Review 预览显示创建费 |
 | T11 | `pnpm typecheck` + `pnpm build` | — | ✅ | 零错误零警告 |
-| T12 | 手动验收 | 浏览器 + Tronscan | ⬜ | 按 check.md 完成 |
+| T12 | 手动验收 | 浏览器 + Tronscan | ✅ | 按 check.md 完成 |
