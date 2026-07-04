@@ -13,6 +13,7 @@
 [![TRON](https://img.shields.io/badge/TRON-FF0013?style=flat-square&logo=tron&logoColor=white)](https://tron.network/)
 [![pnpm](https://img.shields.io/badge/pnpm-F69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Solidity](https://img.shields.io/badge/Solidity-363636?style=flat-square&logo=solidity&logoColor=white)](https://soliditylang.org/)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/agpl-3.0)
 
 <br>
 
