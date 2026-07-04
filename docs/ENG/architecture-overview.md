@@ -1,6 +1,6 @@
 # RESOLVE 系统架构设计
 
-> **版本**: 1.0 · **锚点日期**: 2026-06-27 · **设计原则**: 轻量化 + HTX生态优先 + 零ICP备案
+> **版本**: 1.1 · **锚点日期**: 2026-07-04 · **设计原则**: 轻量化 + HTX生态优先 + 零ICP备案
 > **目标**: 以最简基础设施支撑可获奖的 Hero Market 端到端演示
 
 ---
@@ -118,7 +118,7 @@
 |-----------|------|-------------|
 || Settlement & AMM Contract | Solidity + TVM | Linear bonding curve AMM: `buyShares()`, `sellShares()`, `settle()`, + fee pool. Deployed to TRON Shasta testnet |
 || AMM Pricing | Linear Bonding Curve | `YES_price = 0.5 + net/(2*L)`. Price clamped [0.01, 0.99]. 0.1% trading fee split 50/50 between LP and platform |
-|| Wallet Connection | TronLink Extension | Users connect via browser extension to sign buy/sell/createMarket |
+||| Wallet Connection | TronLink Extension | Users connect via browser extension to sign buy/sell/createMarket. `createMarket` is permissionless — any user can create a market by depositing USDD liquidity (+ 10 USDD creation fee) |
 || Node Service | Trongrid | Free public node, no self-hosting needed |
 || Agent Identity | B.AI 8004 Protocol | Register AI Agent on-chain identity on TRON |
 || Agent Payment | B.AI x402 Protocol | Agent autonomously pays settlement fee |
@@ -134,14 +134,15 @@ Polymarket's arbitration layer relies on **UMA token holders voting manually** (
 
 **Complete end-to-end flow (5-layer division, with AMM)**:
 ```
-Phase                     User Does         Agent Does                  System Does        Contract Does
+|Phase                     User Does         Agent Does                  System Does        Contract Does
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 ① Wallet Connect(1min)  Connect+sign         —                          UI show address     —
 ② Buy/Sell(30s)         Pick side,amount     —                          Compute AMM price   buyShares()/
                         + sign                                            Update positions    sellShares()
 ③ Market Expiry(auto)   —                    6 Agents parallel(6LLM)    Consensus math+DB   —
                                                → 6-vote consensus        +UI animation
-④ Settlement(10s)       Owner signs settle   —                          Call contract       settle()
+④ Settlement(10s)       —                    —                          Auto-trigger settle settleBatch()
+                                                                         after consensus     USDD → winners
 ⑤ Fee Claim(owner)      Owner claims fees    —                          —                   claimFees()
 ```
 
@@ -407,6 +408,30 @@ L:   初始流动性 (USDD)，market creator 创建时注入
 2. 演示场景下单一 LP（market creator）足以展示 AMM 定价 + 买卖功能
 3. 赛后路线图明确将多 LP 列为 Phase 2 高优先级
 
+### ADR-008: `createMarket` 去掉 `onlyOwner` — 任何人都可创建市场
+
+**选择**: `createMarket()` 改为公开调用（去掉 `onlyOwner` 修饰符）
+
+**触发条件**: 2026-07-04 — 用户指出原本业务逻辑要求任何用户可用自己的 TronLink 钱包创建市场，而 `onlyOwner` 导致前端 TronLink 调用被合约拒绝，市场无法上链
+
+**之前的选择**: `createMarket()` 为 `onlyOwner`（2026-06-27，原设计者假设仅平台创建市场）
+
+**变更内容**:
+- `ResolveSettlement.sol`: `createMarket()` 去掉 `onlyOwner`，`settleSimulated()` 整函数删除
+- 用户用自己的 TronLink 钱包调用 `createMarket(marketId, liquidity)`，合约从用户地址拉取 `(liquidity + 10 USDD 创建费)`
+- 用户需先 `approve` USDD 给合约地址
+
+**理由**:
+1. **业务需求**: "任何人都能投入初始资金池创建 market" — 这是产品核心体验
+2. **合约安全不受影响**: `createMarket` 只创建市场结构 + 拉取创建者的 USDD，不影响其他市场资金
+3. **结算仍 protected**: `settleBatch()` 和 `claimMarketFees()` 保持 `onlyOwner` — 平台仍是结算的可信执行者
+
+**保留的权限边界**:
+- `settleBatch(marketId, outcome, winners[], payouts[])` — `onlyOwner`（平台执行链下 AI 共识结果）
+- `claimMarketFees(marketId)` — `onlyOwner`（防止他人提取平台费）
+
+**代价**: 平台不再控制市场上架质量 → 可能需要 spam 防护机制（赛后优化）
+
 ---
 
 ## 8. 模块依赖图
@@ -468,6 +493,10 @@ packages/ai
 | 阿里云 | 未明确 | ❌ 放弃，全栈Vercel |
 | ICP备案 | 未讨论 | ✅ 明确避免 — Vercel全球CDN |
 | 基础设施成本 | 未计算 | ✅ 明确为 $20-50（仅AI推理）|
+| createMarket权限 | onlyOwner（仅平台创建） | ✅ 公开调用（用户 TronLink 创建，合约去 onlyOwner）|
+| 气囊模式 | settleSimulated + AIRBAG_ENABLED | ✅ 删除，结算永远真实转账 |
+| 结算触发 | 用户手动点 Settle | ✅ 共识后自动触发 settleBatch |
+| Agent 投票持久化 | 仅前端内存展示 | ✅ resolve 后写入 Supabase agent_consensus + agent_votes |
 
 ---
 

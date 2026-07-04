@@ -144,16 +144,16 @@ Step 3 ── Results written to Supabase + UI animation
 ① 钱包连接(1min)         连TronLink+签名┄┄┄→       ❌无                        UI回显地址                ❌无
 ② 买入预测(30s)          选YES+金额+TronLink签名   ❌无                        写Supabase持仓            buyShares()
 ③ AI裁决(5-6s)           纯旁观┄┄┄→               6 Agent 并行推理(6LLM)┄┄→   计算共识+写DB+UI动画        ❌无
-                                                   → 6 票加权共识
-④ 链上结算(10s)          Owner签settle签名         ❌无                        调合约接口                 settle()
-                                                                                                         USDD→赢家✅
+                                                   → 6 票加权共识               +自动触发结算
+④ 链上结算(10s)          纯旁观                    ❌无                        自动调 settleBatch()       settleBatch()
+                                                                                                            USDD→赢家✅
 ```
 
 ### 4 层各自做什么
 
 | 参与者 | 阶段①钱包 | 阶段②买入 | 阶段③裁决 | 阶段④结算 |
 |:------|:---------|:---------|:---------|:---------|
-| **🧑 User** | Install+connect+sign | Pick side+sign buyShares | Watch animation | Owner signs settle |
+| **🧑 User** | Install+connect+sign | Pick side+sign buyShares | Watch animation | Watch auto-settle |
 | **🤖 Agent** | — | — | 6 Agents parallel vote + 6-vote consensus + x402 payment | — |
 | **🖥️ 系统** | 显示钱包地址 | 写Supabase+UI更新 | 共识计算+写DB+动画调度 | 调合约+UI更新 |
 | **💎 合约** | — | buyShares（USDD转入池） | — | settle（USDD转赢家） |

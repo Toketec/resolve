@@ -133,7 +133,7 @@ Every agent vote is published with **verifiable citations**. This is not a black
 }
 ```
 
-Each agent's `evidence` array is stored on-chain (via IPFS hash) and displayed in the UI. Participants can click through to the original data sources. This creates a **full audit trail** — every verdict is traceable to the evidence that produced it.
+Each agent's `evidence` array is displayed in the UI with full source URLs. Participants can click through to the original data sources. This creates a **full audit trail** — every verdict is traceable to the evidence that produced it. Evidence data lives in Supabase (Web2 DB) for fast query, while the final settlement outcome is recorded on-chain via `settleBatch()` — the only data that needs immutability is the money transfer.
 
 ---
 
