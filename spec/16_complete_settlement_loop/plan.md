@@ -1,242 +1,220 @@
 # Spec 16: 执行计划
 
-## 架构图
+## 完整闭环图
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Phase 1: 链上创建市场                                            │
-│                                                                   │
-│  create/page.tsx          POST /api/markets/create-chain         │
-│  (前端表单)                      │  (新增端点)                     │
-│       │                          │                                │
-│       │ 提交市场信息               │ 服务端 owner 签名              │
-│       ├──────────────────────────►│ createMarket(mid, liquidity)  │
-│       │                          ├──────────────────────────────►│ 合约
-│       │                          │◄──── txHash ──────────────────│
-│       │◄── {id, txHash} ────────┤                                │
-│       │                          │ DB 写入 markets 行             │
-│       │                          │                                │
-│                                                                   │
-│  Phase 2: 交易 → 持仓                                            │
-│                                                                   │
-│  用户 TronLink                   合约                              │  DB
-│       │                          │                               │
-│       ├── buyShares() ──────────►│                               │
-│       │                          ├── USDD 转入合约 ───────────── │
-│       │                          │── stakes 记录                  │
-│       │                          │                               │
-│       │                          │           ◄── POST /api/buy ──┤
-│       │                          │           ── DB 写入 position ►│
-│                                                                   │
-│  Phase 3: 真实结算                                                │
-│                                                                   │
-│  Settle 按钮              POST /api/settle                      │
-│       │                          │                                │
-│       ├── {marketId, outcome} ──►│                                │
-│       │                          │① listPositionsByMarket()      │
-│       │                          │② 筛赢家                        │
-│       │                          │③ usddBalanceOf(SETTLEMENT)    │
-│       │                          │④ 计算分摊                      │
-│       │                          │⑤ settleBatch() ──────────────►│ 合约
-│       │                          │◄── txHash ────────────────────│── 循环转账 USDD
-│       │◄── {txHash, paidOut:true}│                                │ 到赢家钱包
-│       │                          │⑥ updateMarket() — DB          │
-│       │                          │                                │
-│  Phase 4: 验证                                                    │
-│                                                                   │
-│  Tronscan 查 txHash → SUCCESS ✅                                 │
-│  赢家查钱包 USDD → 余额增加 ✅                                   │
-└──────────────────────────────────────────────────────────────────┘
+用户 TronLink 创建市场
+  → approve USDD → createMarket(mid, liquidity) via TronLink ✅（合约去掉 onlyOwner）
+  → 前端 POST /api/markets → DB 写入同步
+
+用户买卖 YES/NO via TronLink
+  → buyShares/sellShares（已有，正常工作）
+  → DB 同步持仓
+
+市场到期（或 ?dev=1 强制触发）
+  → 6 Agent 共识
+  → 有 OPENAI_API_KEY → 真实 LLM 推理
+  → 无 key + DEV 模式 → 随机投票（非确定性 mock）
+  → 共识结果返回前端 → 动画逐条浮现
+
+共识达成 → 自动触发结算
+  → POST /api/settle（auto）
+  → settleBatch() 真实转账 USDD
+  → 赢家钱包到账 ✅
 ```
 
 ## 执行步骤
 
-### Step 0: 前置准备 — owner 地址 TRX + USDD
+### Step 1: 合约 — `createMarket()` 去掉 `onlyOwner`
 
-在开始编码前，先确保 owner 地址有足够的链上资源。
+**文件**: `apps/contracts/ResolveSettlement.sol`
 
-**owner 地址**：`TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ`（对应 `.env.local` 中的私钥）
-
-**需要准备**：
-
-```
-① TRX ≥ 10（支付交易能量费）
-   从 Shasta Faucet 领取：https://shasta.trongrid.io/faucet
-   或从其他地址转账
-
-② USDD ≥ (流动性金额 + 10 USDD 创建费 per market)
-   使用 MockUSDD 合约给自己 mint：
-   curl -X POST https://api.shasta.trongrid.io/wallet/triggersmartcontract \
-     -d '{
-       "contract_address":"TQAajpcg31edfttbuzvhWu7Vymy3LZLeZK",
-       "function_selector":"mint(address,uint256)",
-       "parameter": 以 owner 地址和金额编码 ,
-       "owner_address":"TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ"
-     }'
-
-③ owner 地址 approve USDD 给合约地址
-   授权 ResolveSettlement 合约可以使用 owner 的 USDD：
-   tw.contract(USDD_ABI).at(USDD_ADDRESS).approve(SETTLEMENT_ADDRESS, 总金额).send(...)
+```diff
+-    function createMarket(bytes32 marketId, uint256 liquidity) external onlyOwner {
++    function createMarket(bytes32 marketId, uint256 liquidity) external {
 ```
 
-> 如果 MockUSDD 没有 `mint` 函数，改用 Shasta 原生 USDD 或通过其他方式注入。
+去掉 `onlyOwner` 修饰符后，任何用户都可以用自己的 TronLink 钱包创建链上市场。合约内部逻辑不变：
+- 从 `msg.sender` 拉取 `(liquidity + 10 USDD 创建费)`
+- 需要用户先 `approve` USDD 给合约地址
+- 前端 `create/page.tsx` 的现有逻辑（走 TronLink）**就是正确的**，之前只是合约挡住了
 
-### Step 1: settlement.ts — 新增服务端 `createMarketAsOwner` 函数
+**同时删除 `settleSimulated()` 函数**（不再需要气囊模式）：
+
+```diff
+-    /** 安全气囊：标记已结算但不转账（测试网不稳定时用）。 */
+-    function settleSimulated(bytes32 marketId, bytes8 outcome) external onlyOwner {
+-        Market storage m = markets[marketId];
+-        require(m.exists, "Resolve: no market");
+-        require(!m.settled, "Resolve: settled");
+-        m.settled = true;
+-        m.outcome = outcome;
+-        emit SettledSimulated(marketId, outcome);
+-    }
+```
+
+### Step 2: 合约 ABI — 删除 `settleSimulated` 条目
+
+**文件**: `apps/web/lib/constants.ts`
+
+从 `SETTLEMENT_ABI` 数组中移除 `settleSimulated` 的 ABI 条目。
+
+### Step 3: 合约封装 — 重构 settlement.ts
 
 **文件**: `apps/web/lib/contract/settlement.ts`
 
-在已有的 `createMarket`（客户端 TronLink 版本）下方或服务端操作区新增：
+1. **删除 `settleSimulated()` 函数**
+2. **删除 `isAirbag()` 函数**
+3. **保留 `settle()` 和 `settleBatch()`**（供结算使用）
+4. **保留 `createMarket()` 客户端函数**（它本来就是正确的，只因为合约 `onlyOwner` 阻塞了）
 
-```typescript
-/**
- * 服务端创建链上市场（owner 私钥签名）。
- * 合约内部从 owner 拉取 (liquiditySun + 10 USDD 创建费)。
- * 注意：owner 地址必须先 approve USDD 给合约地址。
- * 返回 txHash。
- */
-export async function createMarketAsOwner(
-  marketId: string,
-  liquiditySun: bigint,
-): Promise<string> {
-  const tw = getServerTronWeb();
-  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
-
-  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
-  const mid = marketIdToBytes32(marketId);
-  const txHash: string = await (c as any)
-    .createMarket(mid, String(liquiditySun))
-    .send({ feeLimit: 1_000_000_000, callValue: 0 });
-  return txHash;
-}
+修改后 exported 函数列表：
+```
+✓ createMarket()        — 客户端 TronLink 签名（创建市场）
+✓ buyShares()           — 客户端 TronLink 签名（买入）
+✓ sellShares()          — 客户端 TronLink 签名（卖出）
+✓ settle()              — 服务端 owner 签名（单赢家结算）
+✓ settleBatch()         — 服务端 owner 签名（批量结算）
+✗ settleSimulated()     — ⛔ 删除
+✗ isAirbag()            — ⛔ 删除
 ```
 
-### Step 2: 新增服务端 `createMarket` API 端点
+### Step 4: API — 重构 `/api/settle/route.ts`
 
-**文件**: `apps/web/app/api/markets/create-chain/route.ts`（新建）
+**文件**: `apps/web/app/api/settle/route.ts`
 
-新增 `POST /api/markets/create-chain` 端点，接收：
+1. **删除气囊分支**（不再判断 `isAirbag()`）
+2. **只保留真实结算路径**：
+   - 查询持仓 → 筛赢家 → 查合约余额 → 计算分摊 → `settleBatch()` → 更新 DB
+3. **如果 market 不存在链上** → 回滚（不需要降级气囊）
 
-```typescript
-interface CreateChainBody {
-  marketId: string;      // 如 "mk_btc_150k"
-  liquiditySun: string;  // 流动性（USDD sun），如 "1000000" = 1 USDD
-}
-```
-
-逻辑：
+新的简化逻辑：
 
 ```typescript
-import { createMarket, getMarket } from "@/lib/contract/settlement";
-
 export async function POST(req: Request) {
-  // 1. 解析 body
-  // 2. 前置检查：owner 地址 TRX 余额 ≥ 1 TRX（能量费）
-  // 3. 调 contract.settle 的 createMarket(marketId, liquiditySun)
-  // 4. 验证 createMarket 返回 txHash
-  // 5. 调 getMarket() 确认 m.exists = true
-  // 6. 返回 { txHash, marketId, exists: true }
+  const { marketId, outcome } = body;
+
+  // 1. 查询所有持仓
+  const positions = await listPositionsByMarket(marketId);
+  const winners = positions.filter(...);
+  
+  // 2. 无赢家兜底
+  if (winners.length === 0) {
+    await updateMarket(marketId, { status: "settled", resolved_outcome: outcome });
+    return Response.json({ paidOut: false, note: "No winning positions" });
+  }
+  
+  // 3. 计算分摊 → settleBatch()
+  const txHash = await settleBatch(marketId, outcome, winnerAddresses, payoutAmounts);
+  await updateMarket(marketId, { status: "settled", resolved_outcome: outcome, settlement_tx_hash: txHash });
+  
+  return Response.json({ txHash, paidOut: true, winnerCount: winners.length });
 }
 ```
 
-> ⚠️ `createMarket` 当前是 `onlyOwner`，用服务端 owner 私钥签名没问题。如果想让用户也能自己创建，可以后续改合约去掉 `onlyOwner`，但当前先保持统一由平台创建。
+### Step 5: 前端 — 共识后自动触发结算
 
-### Step 3: 市场创建流程串联
+**文件**: `apps/web/components/oracle-deliberation.tsx`
 
-**文件**: `apps/web/app/create/page.tsx`
-
-修改创建流程：前端填入流动性金额后，不再直接调 `createMarket()` via TronLink（因 `onlyOwner` 会失败），改为：
-
-```
-用户填表单 → 前端 POST /api/markets (DB写入)
-  → 前端 POST /api/markets/create-chain (链上创建)
-  → 更新 DB markets 行的 onchain_tx_hash 字段
-```
-
-**流程图（简化）：**
+修改 `startReveal()` 中的 `done` 阶段：
 
 ```typescript
-// 当前（有 bug）:
-// createMarket(slug, amountSun) via TronLink → 因 onlyOwner 回滚 ❌
-// POST /api/markets (DB) → 市场写入但链上没有
-
-// 修复后:
-// POST /api/markets (DB写入) ✅
-// POST /api/markets/create-chain (owner签名链上创建) ✅
-// → 链上 market.exists = true → 结算不再回滚 ✅
+// 当前：共识达成后只显示 Settle 按钮，用户手动点
+// 改为：
+if (i >= consensus.votes.length) {
+  clearInterval(revealTimer.current);
+  setPhase("done");
+  // 自动触发结算（不再等用户手动点）
+  handleSettle().catch(() => {});
+}
 ```
 
-### Step 4: 市场创建后验证链上存在
+同时删除 `<button>Settle on-chain</button>` 的手动触发 UI（不再需要用户干预）。
 
-**终端验证**：
+删除 `handleSettle()` 中的手动触发逻辑，改为在 `phase === "done"` 时自动执行。
 
-```bash
-# 使用 tronweb 脚本或 curl 调 Shasta RPC
-# getMarket(marketId_hash) 应返回 exists=true
+### Step 6: DEV 模式 — 随机投票
+
+**文件**: `packages/ai/src/llm.ts`
+
+当前 `mockAnswer()` 是确定性输出（bullish→YES/0.8, bearish→NO/0.58...）。
+
+改为 DEV 模式随机投票：
+
+```typescript
+function mockAnswer(opts: AskOptions): AgentAnswer {
+  const outcome = Math.random() > 0.5 ? "YES" : "NO";
+  const confidence = 0.5 + Math.random() * 0.4;  // 0.5 ~ 0.9
+  return {
+    outcome: outcome as Outcome,
+    confidence: Number(confidence.toFixed(2)),
+    rationale: `(dev mode) Random vote for testing.`,
+    evidenceRefs: opts.fallbackEvidenceRefs.slice(0, 2),
+    provider: "mock",
+  };
+}
 ```
 
-写好验证脚本（`scripts/verify-market.ts`），可复用。
+这样每次 force resolve（DEV 模式）6 个 Agent 都会随机投票，能完整走通闭环并看到不同的结算结果。
 
-### Step 5: 关闭气囊，配置真实结算
+### Step 7: 删除 AIRBAG 环境变量和依赖
 
 **文件**: `.env.local`
 
 ```diff
 - NEXT_PUBLIC_AIRBAG_ENABLED=true
-+ NEXT_PUBLIC_AIRBAG_ENABLED=false
+  （整行删除，不再使用）
 ```
 
-重启 dev server 后生效。
+**文件**: `apps/web/lib/constants.ts`
 
-### Step 6: 端到端真实结算测试
-
-1. 通过创建页面创建一个测试市场
-   - 自动调 `create-chain` → 链上创建成功 ✅
-2. 用两个不同钱包（通过 TronLink 切换账户）分别买 YES，金额不同
-   - DB positions 表出现 2 条记录
-   - 合约 USDD 余额增加
-3. 到期到达（或 `?dev=1` force resolve）
-4. 共识达成 → votes 浮现
-5. 点 "Settle on-chain"
-6. 观察：
-   - 按钮变为 "Settled · YES" + txHash
-   - 服务端日志打印分配明细
-7. Tronscan 查 txHash → method=`settleBatch`，状态 `SUCCESS` ✅
-8. 两个赢家钱包查询 USDD → 按比例到账 ✅
-
-### Step 6: 补全 DB 字段跟踪链上状态
-
-**文件**: `apps/web/app/api/markets/create-chain/route.ts`
-
-创建成功后，在 DB `markets` 表中记录：
-
-```typescript
-await updateMarket(marketId, {
-  onchain_status: "active",
-  onchain_tx_hash: txHash,
-  onchain_liquidity: liquiditySun,
-});
+```diff
+- export const AIRBAG_ENABLED = process.env.NEXT_PUBLIC_AIRBAG_ENABLED !== "false";
+  （删除）
 ```
 
-如果 DB `markets` 表还没有 `onchain_status` 字段，先在 Supabase 中加列（可选，不阻塞核心流程）。
+### Step 8: 编译合约 + 重新部署
+
+```bash
+# 编译（含 createMarket 去掉 onlyOwner + 删除 settleSimulated）
+cd /home/wst1/王圣滔/C主要项目/resolve
+pnpm --filter @resolve/contracts compile
+
+# 部署到 Shasta 测试网
+TRON_PRIVATE_KEY=xxx pnpm --filter @resolve/contracts deploy:shasta
+```
+
+部署后更新 `.env.local` 中的合约地址。
+
+### Step 9: 类型检查 + 构建
+
+```bash
+pnpm typecheck && pnpm build
+```
+
+### Step 10: 端到端验证
+
+1. 用户 A（TronLink）创建市场 → approve USDD → createMarket() → 链上 exists=true ✅
+2. 用户 B、C 分别买 YES → positions 表有数据 ✅
+3. 市场到期 (或 `?dev=1`) → Force resolve → 6 Agent 随机投票 → 动画 ✅
+4. 共识达成后自动触发 settleBatch() → 链上转账 USDD ✅
+5. 用户 B、C 钱包收到 USDD → Tronscan SUCCESS ✅
 
 ## 关键考虑
 
-### owner 地址 TRX 余额
+### settleBatch 仍然 onlyOwner
 
-`createMarket` 调用本身不消耗 TRX（只有 USDD transferFrom），但交易需要**能量（Energy）**，需要 owner 地址持有足够 TRX（冻结或燃烧）。建议 owner 地址在 Shasta faucet 领至少 10 TRX。
+`settleBatch()` 和 `settle()` 保持 `onlyOwner`。共识在链下完成（6 Agent 推理），平台作为可信节点用 owner 私钥将结果写入链上。这是合理的信任模型——平台不控制"投什么票"，只负责"把投票结果执行上链"。
 
-### 创建费
+### 创建市场的 USDD 从哪里来
 
-合约 `createMarket` 从 owner 拉取 `liquidity + 10 USDD`（创建费）。owner 地址需要在合约部署时已有 USDD 余额，或通过其他方式注入。
+用户必须：
+1. 有 USDD（从 Shasta Faucet 领，或 MockUSDD mint）
+2. approve USDD 给 ResolveSettlement 合约地址
+3. 调用 `createMarket(marketId, liquidity)` → 合约从用户拉取 `(liquidity + 10 USDD)`
 
-如果 owner 没有 USDD，可：
-1. 先用 MockUSDD 给 owner mint 足够的 USDD
-2. 或者部署时 owner 地址通过 Shasta faucet 领 USDD
+### 没有气囊后退
 
-### 幂等保护
-
-`POST /api/markets/create-chain` 应先调 `getMarket()` 检查 `m.exists`，如果已存在则直接返回已有 txHash，不重复创建。
-
-### 合约 balance 管理
-
-用户 buy 的 USDD 会进入合约地址。真实结算时 `settleBatch` 从合约余额转账。如果合约余额不足，API 会返回 500 + "Insufficient contract balance"。
+如果链上市场不存在（`createMarket` 没成功），`settleBatch` 会直接回滚。没有气囊降级。这意味着：
+- 创建市场时必须确认链上市场存在
+- 前端应在创建成功后调用 `getMarket()` 验证

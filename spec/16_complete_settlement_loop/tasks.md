@@ -2,38 +2,33 @@
 
 ## 任务项
 
-| # | 任务 | 文件/命令 | 状态 | Done 检查条件 |
-|:-:|------|----------|:----:|---------------|
-| T00 | owner 地址 TRX 余额 ≥ 10 | Shasta Faucet 或转账 | ⬜ | `tw.trx.getBalance("TLVn5Sa9Y3f...")` ≥ 10 TRX |
-| T01 | owner 地址 USDD 余额 ≥ (流动性+10) | MockUSDD mint 或转入 | ⬜ | `usddBalanceOf("TLVn5Sa9Y3f...")` ≥ 需要金额 |
-| T02 | owner 地址 approve USDD 给合约 | `approve(SETTLEMENT_ADDRESS, 总额)` | ⬜ | `usddAllowance(owner, SETTLEMENT_ADDRESS)` ≥ 需要金额 |
-| T03 | settlement.ts 新增 `createMarketAsOwner()` 服务端函数 | `apps/web/lib/contract/settlement.ts` | ⬜ | 函数签名正确；使用 `getServerTronWeb()`；返回 txHash 字符串 |
-| T04 | 新建 `POST /api/markets/create-chain` 端点 | `apps/web/app/api/markets/create-chain/route.ts` | ⬜ | POST 返回 txHash；getMarket() 确认 exists=true；幂等保护 |
-| T05 | 前端创建市场流程串联 create/page.tsx | `apps/web/app/create/page.tsx` | ⬜ | 创建市场时自动调 create-chain API；不依赖 TronLink 的 createMarket |
-| T06 | 关闭气囊模式 | `.env.local` → `NEXT_PUBLIC_AIRBAG_ENABLED=false` | ⬜ | 设置为 false |
-| T07 | 创建测试市场（端到端） | 浏览器操作 | ⬜ | 市场在 DB 中存在 + 链上 `getMarket().exists=true` |
-| T08 | 2 个钱包分别买 YES（金额不等） | TronLink + 浏览器 | ⬜ | DB positions 表 2 条记录；合约 USDD 余额增加 |
-| T09 | 触发结算 | 浏览器 Settle 按钮 | ⬜ | settleBatch() 返回 SUCCESS txHash；按钮显示 "Settled·YES" |
-| T10 | Tronscan 验证交易 | shasta.tronscan.org | ⬜ | tx 状态 SUCCESS，method=settleBatch |
-| T11 | 验证赢家到账 | Tronscan 查钱包 USDD | ⬜ | 各赢家按比例收到 USDD（A:20% B:80% 等） |
-| T12 | 验证合约 USDD 余额减少 | `usddBalanceOf(SETTLEMENT_ADDRESS)` | ⬜ | 余额减少额 = 所有赢家到账金额之和 |
-| T13 | 边界：重复结算防护 | 已结算市场再点 Settle | ⬜ | 合约返回 "Resolve: settled"，API 500 |
-| T14 | 边界：合约余额不足 | 转出部分 USDD 后触发结算 | ⬜ | API 返回 500 + "Insufficient contract balance" |
-
-## 进度
-
-- 当前阶段: 📋 规划完成，等待实施
+| # | 任务 | 文件 | 状态 | Done 检查条件 |
+|:-:|------|------|:----:|---------------|
+| T01 | 合约 `createMarket()` 去掉 `onlyOwner` | `apps/contracts/ResolveSettlement.sol` | ⬜ | 任意地址可调用，无 require(msg.sender == owner) |
+| T02 | 合约删除 `settleSimulated()` 函数 | `apps/contracts/ResolveSettlement.sol` | ⬜ | 函数体和声明全部移除 |
+| T03 | ABI 删除 `settleSimulated` 条目 | `apps/web/lib/constants.ts` | ⬜ | SETTLEMENT_ABI 中无 settleSimulated |
+| T04 | constants.ts 删除 `AIRBAG_ENABLED` | `apps/web/lib/constants.ts` | ⬜ | AIRBAG_ENABLED 常量和引用全部删除 |
+| T05 | settlement.ts 删除 `settleSimulated()` + `isAirbag()` | `apps/web/lib/contract/settlement.ts` | ⬜ | 无 settleSimulated 函数；无 isAirbag 函数 |
+| T06 | `/api/settle/route.ts` 删除气囊分支，仅保留真实结算 | `apps/web/app/api/settle/route.ts` | ⬜ | 无 isAirbag() 判断；仅有 settleBatch 路径 |
+| T07 | 共识后自动触发结算 | `apps/web/components/oracle-deliberation.tsx` | ⬜ | done 阶段自动调 handleSettle()；无手动按钮 |
+| T08 | DEV 模式随机投票 | `packages/ai/src/llm.ts` | ⬜ | mockAnswer() 使用 Math.random() 而非固定值 |
+| T09 | 编译合约 | `pnpm --filter @resolve/contracts compile` | ⬜ | 编译通过 |
+| T10 | 部署合约到 Shasta | `pnpm --filter @resolve/contracts deploy:shasta` | ⬜ | 部署成功，有新合约地址 |
+| T11 | 更新 `.env.local` 中的新合约地址 | `.env.local` | ⬜ | NEXT_PUBLIC_SETTLEMENT_ADDRESS 为新地址 |
+| T12 | 类型检查 + 构建 | `pnpm typecheck && pnpm build` | ⬜ | typecheck 零错误；build 成功 |
+| T13 | 端到端：用户创建市场（TronLink） | 浏览器操作 | ⬜ | 链上 getMarket().exists=true |
+| T14 | 端到端：双钱包买 YES | TronLink + 浏览器 | ⬜ | DB positions 表 2 条记录 |
+| T15 | 端到端：Force resolve (dev=1) → 随机投票 | 浏览器 | ⬜ | 6 Agent 投票浮现。重复执行应看到不同结果 |
+| T16 | 端到端：自动结算 → 赢家到账 | 浏览器 + Tronscan | ⬜ | tx SUCCESS；赢家 USDD 增加 |
 
 ## 完成标准
 
-当以下全部满足时 Spec 16 验收通过：
-
 ```
-✅ 链上创建市场成功（getMarket().exists=true）
-✅ 用户买入后 positions 表有数据
-✅ 6 Agent 共识达成
-✅ settleBatch 交易链上 SUCCESS
-✅ 赢家钱包收到 USDD
-✅ 合约余额减少 = 赢家收到金额之和
-✅ 重复结算被保护
+✅ 任何用户可创建链上市场（createMarket 非 onlyOwner）
+✅ 用户可买卖 YES/NO
+✅ 到期/DEV 触发 AI 共识
+✅ 共识后自动 settleBatch → 真实转账
+✅ 赢家 USDD 到账（Tronscan 可查）
+✅ 无气囊模式
+✅ DEV 模式下随机投票（可重复走通）
 ```
