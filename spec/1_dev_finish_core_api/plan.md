@@ -23,7 +23,7 @@ console.log(JSON.stringify(data));
 如果 Supabase 迁移 `00001_initial_schema.sql` 尚未执行 → 先去 Supabase Dashboard SQL Editor 执行。
 
 然后执行新迁移 `00002_add_agents.sql`：
-- 打开 https://supabase.com/dashboard/project/vrubfcgxxxxnbkurmoaj/sql/new
+- 打开你的 Supabase 项目 → SQL Editor
 - 粘贴 `packages/db/migrations/00002_add_agents.sql` 全部内容 → 运行
 
 ### Step 2: 创建 API routes（直连 Supabase + HTX）

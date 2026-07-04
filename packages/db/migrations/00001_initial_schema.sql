@@ -2,7 +2,7 @@
 -- RESOLVE — Supabase 初始 Schema 迁移
 -- ─────────────────────────────────────────────────────────────
 -- 在 Supabase Dashboard → SQL Editor 中执行
--- 使用方法: 打开 https://supabase.com/dashboard/project/vrubfcgxxxxnbkurmoaj/sql/new
+-- 使用方法: 打开你的 Supabase 项目 SQL Editor 并执行
 --           粘贴此文件全部内容并运行
 -- ─────────────────────────────────────────────────────────────
 

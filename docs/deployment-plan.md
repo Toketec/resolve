@@ -303,45 +303,60 @@ Click **Deploy**. First build takes 2-5 minutes. URL: `https://resolve-predictio
 
 ### 3.1 NEXT_PUBLIC_ (Browser — required at build time)
 
-| Variable | Example | Source | Required |
-|----------|---------|:------:|:--------:|
-| `NEXT_PUBLIC_SETTLEMENT_ADDRESS` | `TXYZ...` (ResolveSettlement) | Deploy contract | ✅ |
-| `NEXT_PUBLIC_USDD_ADDRESS` | `TXYZ...` (USDD/MockUSDD) | Deploy USDD | ✅ |
-| `NEXT_PUBLIC_TRON_FULL_HOST` | `https://api.shasta.trongrid.io` | Fixed | ✅ |
-| `NEXT_PUBLIC_AIRBAG_ENABLED` | `true` | Default true | ❌ |
-| `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | `TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5` | Already deployed | ✅ (live mode) |
-| `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `preconfig` | Default mock | ✅ |
+| Variable | How to Get | Required |
+|----------|-----------|:--------:|
+| `NEXT_PUBLIC_SETTLEMENT_ADDRESS` | Deploy ResolveSettlement, get from `deployment-output.json` or terminal output. Leave empty in airbag mode. | ⚠️ |
+| `NEXT_PUBLIC_USDD_ADDRESS` | Deploy MockUSDD. Leave empty in airbag mode. | ⚠️ |
+| `NEXT_PUBLIC_TRON_FULL_HOST` | Fixed: `https://api.shasta.trongrid.io` (Shasta testnet) | ✅ |
+| `NEXT_PUBLIC_AIRBAG_ENABLED` | `true` = simulated settlement; `false` = real on-chain payout. Defaults to `true` if unset | ❌ |
+| `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | Already deployed AgentRegistry: `TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5` (live mode only) | ⚠️ |
+| `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `mock` (derived), `preconfig` (preset addresses), `live` (chain read). Use `preconfig` for competition | ✅ |
+
+> ⚠️ = Can be left empty in airbag mode — system auto-degrades to mock/simulated data
 
 ### 3.2 Server-Side Only (API Routes)
 
-| Variable | Example | Source | Required |
-|----------|---------|:------:|:--------:|
-| `SUPABASE_URL` | `https://xxxx.supabase.co` | Supabase project | ✅ |
-| `SUPABASE_ANON_KEY` | `eyJhbGciOi...` | Supabase project | ✅ |
-| `SUPABASE_SERVICE_KEY` | `eyJhbGciOi...` | Supabase project | ✅ |
-| `TRON_PRIVATE_KEY` | `0x...` (owner private key) | Your wallet | ✅ |
-| `OPENAI_API_KEY` | `sk-...` | relay / B.AI | ❌ (mock fallback) |
-| `OPENAI_BASE_URL` | `https://relay.zijo.io/v1` | Provider | ❌ |
-| `OPENAI_MODEL` | `gpt-5.5` | Optional | ❌ |
+| Variable | How to Get | Required |
+|----------|-----------|:--------:|
+| `SUPABASE_URL` | Supabase project → **Settings → API → Project URL** | ✅ |
+| `SUPABASE_ANON_KEY` | Same page → **Project API keys → anon public** | ✅ |
+| `SUPABASE_SERVICE_KEY` | Same page → **Project API keys → service_role** (full access, use with care) | ✅ |
+| `TRON_PRIVATE_KEY` | **Your deploy wallet's private key**. Used only by settle API for signing. **Keep secret — only set in Production** | ✅ |
+| `OPENAI_API_KEY` | From your LLM provider (OpenAI / OpenRouter / B.AI / relay). **When absent, AI falls back to mock** | ❌ |
+| `OPENAI_BASE_URL` | Your LLM provider's API endpoint, e.g. `https://openrouter.ai/api/v1`. Defaults to OpenAI official endpoint | ❌ |
+| `OPENAI_MODEL` | Model name, e.g. `gpt-5.5`, `deepseek-chat`, `claude-sonnet-4`. Code defaults to `gpt-5.5` | ❌ |
 
-### 3.3 Current On-Chain Addresses
+### 3.3 Currently Deployed Contract Addresses (reference in this doc, not hardcoded in code)
 
-| Contract | Address | Status |
-|----------|---------|:------:|
-| **AgentRegistry** | `TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5` | ✅ Deployed |
-| **ResolveSettlement** | **Pending** | ❌ Needs deploy |
-| **MockUSDD** | **Pending** | ❌ Needs deploy |
+| Contract | Address | Network | Status |
+|----------|---------|:------:|:------:|
+| **AgentRegistry** | `TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5` | Shasta testnet | ✅ Deployed |
+| **Deployer Wallet** | `TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ` | Shasta testnet | ✅ Has TRX balance |
+| **6 Agent Registered Addresses** | All point to deployer wallet | Shasta testnet | ✅ All on-chain |
+| **ResolveSettlement** | — | Shasta | ❌ Not deployed (not needed in airbag mode) |
+| **MockUSDD** | — | Shasta | ❌ Not deployed (not needed in airbag mode) |
 
-### 3.4 Recommended Demo Config
+### 3.4 Recommended Configurations
 
-For competition demo, use airbag + preconfig (no real contract needed):
+**Competition/Demo** — Airbag mode + preconfig, full UI without any contract deployment:
 
 ```
 NEXT_PUBLIC_AIRBAG_ENABLED=true
 NEXT_PUBLIC_AGENT_REGISTRY_MODE=preconfig
 ```
 
-All settlements use simulated transactions. Agent addresses are hardcoded. Full UI works without real on-chain interaction.
+Agent cards show valid-format TRON addresses (`TXYZ...`), clickable to Tronscan. All trade/settlement goes through simulated flow.
+
+**Full-feature mode** — Requires deploying ResolveSettlement + MockUSDD:
+
+```
+NEXT_PUBLIC_AIRBAG_ENABLED=false
+NEXT_PUBLIC_SETTLEMENT_ADDRESS=<from ResolveSettlement deployment>
+NEXT_PUBLIC_USDD_ADDRESS=<from MockUSDD deployment>
+NEXT_PUBLIC_AGENT_REGISTRY_MODE=live
+NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5
+TRON_PRIVATE_KEY=<your key>
+```
 
 ---
 

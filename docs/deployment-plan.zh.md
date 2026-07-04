@@ -330,47 +330,60 @@ ENABLE_PNPM: 1
 
 ### 3.1 NEXT_PUBLIC_（浏览器端可见，必须配）
 
-| 变量 | 示例值 | 来源 | 必填 |
-|------|--------|------|:----:|
-| `NEXT_PUBLIC_SETTLEMENT_ADDRESS` | `TXYZ...`（ResolveSettlement 合约地址） | 部署合约后获得 | ✅ |
-| `NEXT_PUBLIC_USDD_ADDRESS` | `TXYZ...`（USDD/MockUSDD 地址） | 部署 USDD 后获得 | ✅ |
-| `NEXT_PUBLIC_TRON_FULL_HOST` | `https://api.shasta.trongrid.io` | 固定值 | ✅ |
-| `NEXT_PUBLIC_AIRBAG_ENABLED` | `true` | 默认 true | ❌ |
-| `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | `TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5` | 已部署 | ✅（live 模式） |
-| `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `preconfig` | 选 preconfig 或 mock | ✅ |
+| 变量 | 如何获取 | 必填 |
+|------|---------|:----:|
+| `NEXT_PUBLIC_SETTLEMENT_ADDRESS` | 部署 ResolveSettlement 合约后，从 `deployment-output.json` 或终端输出中获得。气囊模式下可留空。 | ⚠️ |
+| `NEXT_PUBLIC_USDD_ADDRESS` | 部署 MockUSDD 后获得。气囊模式下可留空。 | ⚠️ |
+| `NEXT_PUBLIC_TRON_FULL_HOST` | 固定值 `https://api.shasta.trongrid.io`（Shasta 测试网） | ✅ |
+| `NEXT_PUBLIC_AIRBAG_ENABLED` | `true` = 模拟结算（不转账）；`false` = 真实链上赔付。不设置时默认为 `true` | ❌ |
+| `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | 已部署的 AgentRegistry 合约地址：`TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5`（live 模式才需要） | ⚠️ |
+| `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `mock`（衍生串）、`preconfig`（预设地址）、`live`（链上读取）。推荐比赛用 `preconfig` | ✅ |
+
+> ⚠️ = 气囊模式下可留空，系统自动降级使用 mock/模拟数据
 
 ### 3.2 服务端私有（仅 API Routes 读取）
 
-| 变量 | 示例值 | 来源 | 必填 |
-|------|--------|------|:----:|
-| `SUPABASE_URL` | `https://xxxx.supabase.co` | Supabase 项目 | ✅ |
-| `SUPABASE_ANON_KEY` | `eyJhbGciOi...` | Supabase 项目 | ✅ |
-| `SUPABASE_SERVICE_KEY` | `eyJhbGciOi...` | Supabase 项目 | ✅ |
-| `TRON_PRIVATE_KEY` | `0x...`（owner 私钥） | 你的钱包 | ✅ |
-| `OPENAI_API_KEY` | `sk-...` | relay / B.AI | ❌（无 key 走 mock） |
-| `OPENAI_BASE_URL` | `https://relay.zijo.io/v1` | 服务商提供 | ❌ |
-| `OPENAI_MODEL` | `gpt-5.5` | 选填 | ❌ |
+| 变量 | 如何获取 | 必填 |
+|------|---------|:----:|
+| `SUPABASE_URL` | 创建 Supabase 项目后 → **Project Settings → API → Project URL** | ✅ |
+| `SUPABASE_ANON_KEY` | 同上页面 → **Project API keys → anon public** | ✅ |
+| `SUPABASE_SERVICE_KEY` | 同上页面 → **Project API keys → service_role**（慎用，有全部读写权限） | ✅ |
+| `TRON_PRIVATE_KEY` | **你的部署钱包私钥**。仅 settle API 使用，对交易签名。**此值必须保密，只填 Production 环境** | ✅ |
+| `OPENAI_API_KEY` | 从你的 LLM 提供商获得（OpenAI / OpenRouter / B.AI / relay）。**不填时 AI 推理走 mock 兜底** | ❌ |
+| `OPENAI_BASE_URL` | 你的 LLM 提供商 API 端点，如 `https://openrouter.ai/api/v1`。不填时默认为 OpenAI 官方端点 | ❌ |
+| `OPENAI_MODEL` | 模型名，如 `gpt-5.5`、`deepseek-chat`、`claude-sonnet-4`。不填时代码默认 `gpt-5.5` | ❌ |
 
-### 3.3 当前已部署合约地址（可直接用）
+### 3.3 当前已部署合约地址（部署文档中引用，非代码硬编码）
 
-| 合约 | 地址 | 状态 |
-|------|------|:----:|
-| **AgentRegistry** | `TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5` | ✅ 已部署 |
-| **ResolveSettlement** | **待部署** | ❌ **需补** |
-| **MonitorUSDD** | **待部署** | ❌ **需补** |
+| 合约 | 地址 | 网络 | 状态 |
+|------|------|:----|:----:|
+| **AgentRegistry** | `TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5` | Shasta 测试网 | ✅ 已部署 |
+| **部署者钱包** | `TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ` | Shasta 测试网 | ✅ 有 TRX 余额 |
+| **6 个 Agent 注册地址** | 全部指向部署者地址（同一钱包） | Shasta 测试网 | ✅ 均已在链上注册 |
+| **ResolveSettlement** | — | Shasta | ❌ 尚未部署（气囊模式不需要） |
+| **MockUSDD** | — | Shasta | ❌ 尚未部署（气囊模式不需要） |
 
 ### 3.4 实际配置建议
 
-比赛/演示阶段推荐用 **气囊模式 + preconfig**，无需部署 ResolveSettlement 即可展示：
+**比赛/演示阶段推荐** — 气囊模式 + preconfig，无需部署合约即可展示完整 UI：
 
 ```
 NEXT_PUBLIC_AIRBAG_ENABLED=true
 NEXT_PUBLIC_AGENT_REGISTRY_MODE=preconfig
 ```
 
-这样所有结算走模拟流程，Agent 地址走硬编码——页面展示完整，不依赖链上真实合约调用。
+此时 Agent 卡片显示格式正确的 TRON 地址（`TXYZ...`），可点击跳 Tronscan。所有买卖结算走模拟流程。
 
-如果想展示真实链上交互，再部署 ResolveSettlement 并关闭气囊。
+**完整功能模式** — 需要额外部署 ResolveSettlement + MockUSDD：
+
+```
+NEXT_PUBLIC_AIRBAG_ENABLED=false
+NEXT_PUBLIC_SETTLEMENT_ADDRESS=<部署 ResolveSettlement 后获得>
+NEXT_PUBLIC_USDD_ADDRESS=<部署 MockUSDD 后获得>
+NEXT_PUBLIC_AGENT_REGISTRY_MODE=live
+NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=TE1EvYNCHks9WUJsj8LmwLZw6fZSnPErz5
+TRON_PRIVATE_KEY=<你的私钥>
+```
 
 ---
 
