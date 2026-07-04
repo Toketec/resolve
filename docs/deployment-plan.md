@@ -1,106 +1,124 @@
-# RESOLVE Deployment Guide (For Ops)
+# RESOLVE Deployment Guide
 
-> Fresh-environment deployment checklist. Execute in order.
-> Estimated time: 1-2 hours (incl. contract deployment wait time)
+> Fresh-environment deployment. Execute chapters in order.
+> All modules: Database (Supabase) + Smart Contracts (Shasta) + Backend sync + Frontend (Vercel) + Cron Jobs
 
 ---
 
-## I. Accounts Needed
+## Chapter 1: Account Registration
 
 | Service | Sign Up | Purpose |
 |---------|---------|---------|
 | Vercel | vercel.com (GitHub login) | Web app + API hosting |
 | Supabase | supabase.com (GitHub login) | PostgreSQL database |
-| Shasta testnet TRX | shasta.trongrid.io faucet | Contract deployment gas fee |
-| LLM API | openrouter.ai / deepseek / any OpenAI-compatible | AI inference (optional, works without) |
+| Shasta faucet | shasta.trongrid.io | Test TRX for contract deployment |
+| LLM API | openrouter.ai or any OpenAI-compatible | AI inference (optional) |
 
 ---
 
-## II. Infrastructure Setup
+## Chapter 2: Database (Supabase)
 
-### 2.1 Supabase (Database)
+**1. Create project**
 
-1. Create project:
-   - supabase.com → **New Project**
-   - Name: `resolve`
-   - Database Password: create & save
-   - Region: **Singapore**
-   - Wait ~2 minutes
+supabase.com → **New Project**:
+- Name: `resolve`
+- Password: create & save
+- Region: **Singapore**
+- Wait ~2 minutes
 
-2. Run database initialization:
-   - **SQL Editor** → paste file content → run
-   - Execute **in order** (one by one):
+**2. Import schema + seed data**
 
-   | # | File | Purpose |
-   |:---:|------|---------|
-   | 1 | `packages/db/migrations/00001_initial_schema.sql` | Create tables + hero market seed |
-   | 2 | `packages/db/migrations/00002_add_agents.sql` | Create agents table + 6 AI Agent seed |
-   | 3 | `packages/db/migrations/00003_amm_schema.sql` | Create trades table + position model |
-   | 4 | `packages/db/migrations/00004_pool_state_sync.sql` | Create market pool state table |
-   | 5 | `packages/db/migrations/00005_add_agent_onchain_fields.sql` | Add on-chain address fields to agents |
+**SQL Editor** → execute 5 files **in order**:
 
-3. Record connection credentials:
-   - **Project Settings → API** → copy 3 values:
+| # | File | What it does |
+|:---:|------|-------------|
+| 1 | `packages/db/migrations/00001_initial_schema.sql` | Create 4 tables + insert hero market |
+| 2 | `packages/db/migrations/00002_add_agents.sql` | Create agents table + insert 6 AI Agents |
+| 3 | `packages/db/migrations/00003_amm_schema.sql` | Create trades table + position balance model |
+| 4 | `packages/db/migrations/00004_pool_state_sync.sql` | Create market pool state table |
+| 5 | `packages/db/migrations/00005_add_agent_onchain_fields.sql` | Add 5 on-chain fields to agents table |
 
-   | Label | Env Variable |
-   |-------|-------------|
-   | Project URL | `SUPABASE_URL` |
-   | anon public key | `SUPABASE_ANON_KEY` |
-   | service_role key | `SUPABASE_SERVICE_KEY` |
+After execution, database will contain:
+- 7 tables: `markets`, `positions`, `agent_consensus`, `agent_votes`, `agents`, `trades`, `market_pool_states`
+- 1 hero market: slug=`btc-150k-eoy`
+- 6 Agents: bull-1 ~ neut-2
 
-### 2.2 Deploy Smart Contracts (Shasta Testnet)
+**3. Record connection credentials**
 
-**Prerequisite**: Deployer wallet needs Shasta test TRX (claim at https://shasta.trongrid.io).
+Project Settings → **API** → copy these 3 values:
 
-1. Run on your local machine or CI:
+```
+SUPABASE_URL       = https://xxxx.supabase.co
+SUPABASE_ANON_KEY  = eyJhbG...
+SUPABASE_SERVICE_KEY = eyJhbG...
+```
+
+---
+
+## Chapter 3: Smart Contracts (Deploy to Shasta Testnet)
+
+### 3.1 Prepare environment
+
+On a machine with Node.js:
 
 ```bash
 cd apps/contracts
 pnpm install
 node scripts/compile.js
-TRON_PRIVATE_KEY=<deployer wallet private key> node scripts/deploy.js all
 ```
 
-2. On success, terminal outputs:
+Build artifacts:
+- `build/MockUSDD.json`
+- `build/ResolveSettlement.json`
 
-```
-=== Deployment Summary ===
-Next.js .env entries:
-  NEXT_PUBLIC_USDD_ADDRESS="TXYZabc123..."
-  NEXT_PUBLIC_SETTLEMENT_ADDRESS="TXYZdef456..."
-  NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS="TXYZghi789..."
-```
-
-3. Save these 3 contract addresses.
-4. Sync agent on-chain addresses to database:
+### 3.2 Deploy all contracts
 
 ```bash
-SUPABASE_URL=<from step above> \
-SUPABASE_ANON_KEY=<from step above> \
+TRON_PRIVATE_KEY=<wallet private key> node scripts/deploy.js all
+```
+
+On success, terminal outputs 3 contract addresses — **save them**:
+
+```
+NEXT_PUBLIC_USDD_ADDRESS=TMock...        
+NEXT_PUBLIC_SETTLEMENT_ADDRESS=TSettle... 
+NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=TReg...
+```
+
+The deploy script also:
+- Registers 6 Agents (bull-1 ~ neut-2) in AgentRegistry
+- Writes `deployment-output.json`
+
+### 3.3 Sync on-chain addresses to database
+
+```bash
+SUPABASE_URL=<from Ch2> SUPABASE_ANON_KEY=<from Ch2> \
 node scripts/sync-agents-to-db.js
 ```
 
-5. Create a test market on-chain + inject liquidity (for buy/sell to work):
+Updates `agents` table with `tron_address`, `deployment_tx_hash`, etc.
 
-```bash
-TRON_PRIVATE_KEY=<deployer key> \
-SETTLEMENT_ADDRESS=<from deploy output> \
-USDD_ADDRESS=<from deploy output> \
-node scripts/create-test-market.js
-```
+### 3.4 Create on-chain market (optional)
 
-> Note: The DB already has a hero market from migration seed. If running in airbag mode (`AIRBAG_ENABLED=true`), on-chain market creation is optional — the UI uses mock data.
+For real buy/sell flow (not mock):
+
+1. Call `createMarket(marketId, liquidity)` on ResolveSettlement
+2. `marketId` must match DB's `btc-150k-eoy` (bytes32 encoded)
+3. Call `approve(SETTLEMENT_ADDRESS, amount)` for USDD
+
+> Skip if using airbag mode (`AIRBAG_ENABLED=true`) — system uses simulated flow.
 
 ---
 
-## III. Application Deployment (Vercel)
+## Chapter 4: Web App + API (Deploy to Vercel)
 
-### 3.1 Create Project
+### 4.1 Create Vercel project
 
 1. vercel.com → **Add New → Project**
 2. Select GitHub repo `resolve`
+3. Auto-detects Next.js
 
-### 3.2 Build Settings
+### 4.2 Build settings
 
 | Field | Value |
 |-------|-------|
@@ -108,35 +126,53 @@ node scripts/create-test-market.js
 | Root Directory | (leave empty) |
 | Build Command | `cd apps/web && npx next build` |
 | Install Command | `pnpm install` |
-| Node.js Version | 20.x |
+| Node.js Version | **20.x** |
 
-### 3.3 Environment Variables
+> Do NOT use `pnpm build` — contracts package needs solc (not available in Vercel build env).
 
-Add these in Vercel **Settings → Environment Variables**:
+### 4.3 Environment variables
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `SUPABASE_URL` | From Supabase | Database URL |
-| `SUPABASE_ANON_KEY` | From Supabase | Database anon key |
-| `SUPABASE_SERVICE_KEY` | From Supabase | Database service key (admin) |
-| `NEXT_PUBLIC_TRON_FULL_HOST` | `https://api.shasta.trongrid.io` | TRON RPC endpoint |
-| `NEXT_PUBLIC_SETTLEMENT_ADDRESS` | From contract deploy | ResolveSettlement contract |
-| `NEXT_PUBLIC_USDD_ADDRESS` | From contract deploy | USDD/MockUSDD contract |
-| `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | From contract deploy | AgentRegistry contract |
-| `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `live` | Agent address source |
-| `NEXT_PUBLIC_AIRBAG_ENABLED` | `false` | `true`=simulated, `false`=real payout |
-| `TRON_PRIVATE_KEY` | Your wallet private key | For settle tx signing (Production only) |
-| `OPENAI_API_KEY` | From LLM provider | AI inference (optional, mock fallback) |
-| `OPENAI_BASE_URL` | LLM API endpoint | e.g. `https://openrouter.ai/api/v1` |
-| `OPENAI_MODEL` | Model name | e.g. `gpt-5.5` / `deepseek-chat` |
+Add these 13 variables in Vercel **Settings → Environment Variables**:
 
-### 3.4 Deploy
+**① Database (from Chapter 2)**
 
-- Click **Deploy**
-- First build: ~2-5 minutes
-- Get URL: `https://resolve-prediction.vercel.app`
+| Variable | Value |
+|----------|-------|
+| `SUPABASE_URL` | `https://xxxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | `eyJhbG...` |
+| `SUPABASE_SERVICE_KEY` | `eyJhbG...` |
 
-### 3.5 Configure Cron Jobs
+**② Blockchain (from Chapter 3.2)**
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_SETTLEMENT_ADDRESS` | Settlement contract address |
+| `NEXT_PUBLIC_USDD_ADDRESS` | USDD contract address |
+| `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | AgentRegistry contract address |
+| `NEXT_PUBLIC_TRON_FULL_HOST` | `https://api.shasta.trongrid.io` |
+| `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `live` (read from chain) or `preconfig` |
+| `NEXT_PUBLIC_AIRBAG_ENABLED` | `true` (simulated settlement) |
+| `TRON_PRIVATE_KEY` | Wallet private key (Production only) |
+
+**③ AI Inference (optional, auto-mock if absent)**
+
+| Variable | Value |
+|----------|-------|
+| `OPENAI_API_KEY` | From LLM provider |
+| `OPENAI_BASE_URL` | e.g. `https://openrouter.ai/api/v1` |
+| `OPENAI_MODEL` | e.g. `gpt-5.5` |
+
+### 4.4 Deploy
+
+Click **Deploy**. First build: ~2-5 min. Get URL:
+
+```
+https://resolve-prediction.vercel.app
+```
+
+---
+
+## Chapter 5: Cron Jobs (Vercel Cron)
 
 Create `vercel.json` in project root:
 
@@ -151,76 +187,77 @@ Create `vercel.json` in project root:
 }
 ```
 
-Commit to main — Vercel auto-detects.
+- Commit to main → Vercel auto-loads
+- Every 5 min: reads on-chain prices/liquidity → updates `market_pool_states` table
+- Hobby plan: 2 free cron jobs
 
-Manual first trigger:
+First manual trigger:
 
 ```bash
 curl https://resolve-prediction.vercel.app/api/cron/refresh-pools
 ```
-
-Expected: `{ "refreshed": 1, "failed": 0, "total": 1, "results": [...] }`
 
 ---
 
-## IV. Deployment Verification
+## Chapter 6: Verification
 
-### 4.1 API Endpoints
+### 6.1 API endpoints
 
 ```bash
-# Markets
+# Markets (should include btc-150k-eoy)
 curl https://resolve-prediction.vercel.app/api/markets
-# Expected: JSON array with btc-150k-eoy
 
-# Agents
+# Agents (should return 6)
 curl https://resolve-prediction.vercel.app/api/agents
-# Expected: 6 agents
 
-# Agent on-chain verification
+# On-chain agent verification
 curl https://resolve-prediction.vercel.app/api/agents/verify
-# Expected: agent addresses from chain
 
 # BTC price
 curl https://resolve-prediction.vercel.app/api/price/BTC
-# Expected: JSON with price field
 
 # Cron (pool refresh)
 curl https://resolve-prediction.vercel.app/api/cron/refresh-pools
-# Expected: refresh results JSON
+
+# K-line
+curl https://resolve-prediction.vercel.app/api/price/BTC/kline
 ```
 
-### 4.2 Pages
+### 6.2 Page checks
 
-| URL | Check |
-|-----|-------|
-| `/` | Market cards visible |
-| `/markets` | Hero market `btc-150k-eoy` shows |
-| `/markets/btc-150k-eoy` | Detail + TradePanel |
+| URL | What to check |
+|-----|--------------|
+| `/` | Homepage shows market cards |
+| `/markets` | Hero market `btc-150k-eoy` visible, status=active |
+| `/markets/btc-150k-eoy` | Market detail + TradePanel |
 | `/agents` | 6 agent cards with TRON address links |
 | `/portfolio` | Portfolio page (requires TronLink) |
 | `/create` | Create market page |
 
-### 4.3 Error Scenarios
+### 6.3 Error handling
 
 | Scenario | Expected |
 |----------|----------|
 | Supabase unreachable | Page shows mock data, no crash |
-| TRON contract unreachable | Airbag mode auto-activates |
+| No contract address configured | Airbag mode auto-activates |
 | No LLM API key | AI consensus uses mock fallback |
 | TronLink not installed | Shows "install TronLink" prompt |
 
 ---
 
-## V. FAQ
+## Appendix: Complete Component Inventory
 
-### Q: Blank page / 500 error after deploy
-
-A: Check Vercel build logs. Most common cause: missing `SUPABASE_URL` or `SUPABASE_ANON_KEY`.
-
-### Q: Buy/sell buttons don't respond
-
-A: Check `NEXT_PUBLIC_SETTLEMENT_ADDRESS` and `NEXT_PUBLIC_USDD_ADDRESS`. In airbag mode (`AIRBAG_ENABLED=true`), transactions are simulated — no contract address needed.
-
-### Q: Agent page shows no TRON addresses
-
-A: Check `NEXT_PUBLIC_AGENT_REGISTRY_MODE`. Must be `live` or `preconfig`. `mock` mode hides real addresses.
+| # | Component | Type | Location | Deployment method |
+|:-:|-----------|------|----------|-------------------|
+| 1 | PostgreSQL database (7 tables) | Data layer | Supabase | Run 5 migration SQL files |
+| 2 | Seed data (1 market + 6 agents) | Data layer | Supabase | Built into SQL migrations |
+| 3 | MockUSDD contract | Smart contract | Shasta testnet | `node scripts/deploy.js all` |
+| 4 | ResolveSettlement (AMM) contract | Smart contract | Shasta testnet | Same |
+| 5 | AgentRegistry contract | Smart contract | Shasta testnet | Same |
+| 6 | 6 Agent on-chain registration | Init | Shasta testnet | deploy.js auto-runs |
+| 7 | Sync on-chain addresses to DB | Init | Local | `node scripts/sync-agents-to-db.js` |
+| 8 | Next.js pages + 16 APIs | App layer | Vercel | GitHub push → auto-build |
+| 9 | i18n geo middleware | App layer | Vercel | Deployed with Next.js |
+| 10 | Pool state refresh cron | Scheduled | Vercel Cron | `vercel.json` config |
+| 11 | AI consensus inference | On-demand | Vercel API | Part of API routes |
+| 12 | 13 environment variables | Config | Vercel | Manual entry |
