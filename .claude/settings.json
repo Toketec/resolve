@@ -58,7 +58,6 @@
       "Bash(curl -sS --max-time 12 -X POST https://api.shasta.trongrid.io/wallet/getaccount -H 'Content-Type: application/json' -d '{\"address\":\"__TRACKED_VAR__\",\"visible\":true}')",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{const a=JSON.parse\\(d\\);const trx=\\(a.balance||0\\)/1e6;console.log\\('TRX balance:',trx\\);console.log\\('account active:',Object.keys\\(a\\).length>0\\);console.log\\('TRC20 tokens:',\\(a.trc20||[]\\).length\\)}catch\\(e\\){console.log\\('raw:',d.slice\\(0,200\\)\\)}}\\)\")",
       "Bash(pnpm --filter @resolve/contracts add -D tronweb)",
-      "Bash(TRON_PRIVATE_KEY=84ba17e6fdb2d1e0153455b0d629bd0bec45f1b63a77d89f887ee8ac8cdac4d6 node apps/contracts/scripts/deploy.js)",
       "Bash(node -e \"const a=require\\('./apps/contracts/build/ResolveSettlement.json'\\).abi; console.log\\(JSON.stringify\\(a.filter\\(e=>['function','event'].includes\\(e.type\\)\\).map\\(e=>\\({t:e.type,n:e.name}\\)\\),null,0\\)\\)\")",
       "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright: yes'\\)}catch{console.log\\('playwright: no'\\)}\")",
       "Bash(node -e \"try{require.resolve\\('puppeteer'\\);console.log\\('puppeteer: yes'\\)}catch{console.log\\('puppeteer: no'\\)}\")",

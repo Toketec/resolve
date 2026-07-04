@@ -108,26 +108,6 @@ export function sellShares(input: {
   return apiPost<SellResponse>("/api/sell", input);
 }
 
-export interface SettleResponse {
-  marketId: string;
-  outcome: Outcome;
-  txHash: string;
-  paidOut: boolean;
-  simulated: boolean;
-  winnerCount?: number;
-  totalPayout?: string;
-  note?: string;
-}
-
-export function settle(input: {
-  marketId: string;
-  outcome: Outcome;
-  winnerWallet?: string;
-  payoutSun?: string;
-}): Promise<SettleResponse> {
-  return apiPost<SettleResponse>("/api/settle", input);
-}
-
 export interface PriceSnapshot {
   symbol: string;
   pair: string;

@@ -23,6 +23,7 @@ export const USDD_DECIMALS = 6;
 /** ResolveSettlement ABI（与 apps/contracts/build/ResolveSettlement.json 同步）。 */
 export const SETTLEMENT_ABI = [
   { type: "constructor", stateMutability: "nonpayable", inputs: [{ name: "_usdd", type: "address" }] },
+  // ── 交易（客户端 TronLink 签名）─────────────────────
   {
     type: "function", name: "buyShares", stateMutability: "nonpayable",
     inputs: [
@@ -49,31 +50,21 @@ export const SETTLEMENT_ABI = [
     ],
     outputs: [],
   },
+  // ── Claim 式结算（客户端 TronLink 签名，无需 owner）───
   {
-    type: "function", name: "settle", stateMutability: "nonpayable",
+    type: "function", name: "resolveOutcome", stateMutability: "nonpayable",
     inputs: [
       { name: "marketId", type: "bytes32" },
       { name: "outcome", type: "bytes8" },
-      { name: "winner", type: "address" },
-      { name: "payout", type: "uint256" },
     ],
     outputs: [],
   },
   {
-    type: "function", name: "settleBatch", stateMutability: "nonpayable",
-    inputs: [
-      { name: "marketId", type: "bytes32" },
-      { name: "outcome", type: "bytes8" },
-      { name: "winners", type: "address[]" },
-      { name: "payouts", type: "uint256[]" },
-    ],
-    outputs: [],
-  },
-  {
-    type: "function", name: "claimMarketFees", stateMutability: "nonpayable",
+    type: "function", name: "claimReward", stateMutability: "nonpayable",
     inputs: [{ name: "marketId", type: "bytes32" }],
     outputs: [],
   },
+  // ── 查询 ──────────────────────────────────────────
   {
     type: "function", name: "getPoolState", stateMutability: "view",
     inputs: [{ name: "marketId", type: "bytes32" }],

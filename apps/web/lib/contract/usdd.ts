@@ -2,10 +2,10 @@
 // USDD TRC-20 封装 — approve / balanceOf / allowance
 // ─────────────────────────────────────────────
 // 客户端 TronLink 签名: approve（授权结算合约使用用户 USDD）
-// 只读查询: balanceOf / allowance（支持客户端和服务端）
+// 只读查询: balanceOf / allowance（客户端优先，回退到只读 RPC）
 // ─────────────────────────────────────────────
 
-import { getClientTronWeb, getServerTronWeb } from "./tronweb";
+import { getClientTronWeb, getReadOnlyTronWeb } from "./tronweb";
 import { USDD_ADDRESS, USDD_ABI, USDD_DECIMALS } from "@/lib/constants";
 
 // ── 金额转换 ───────────────────────────────────────────
@@ -41,22 +41,20 @@ export async function approveUSDD(
   return txHash;
 }
 
-/** 查询地址的 USDD 余额（最小值 sun）。 */
+/** 查询地址的 USDD 余额（最小值 sun）。优先客户端，回退到只读 RPC。 */
 export async function usddBalanceOf(address: string): Promise<bigint> {
-  const tw = getClientTronWeb() || getServerTronWeb();
-  if (!tw) throw new Error("TronWeb 不可用，无法查询余额");
+  const tw = getClientTronWeb() || getReadOnlyTronWeb();
   const c = await tw.contract(USDD_ABI as any).at(USDD_ADDRESS);
   const bal: string = await c.balanceOf(address).call();
   return BigInt(bal);
 }
 
-/** 查询授权额度（owner 授权给 spender 的 USDD 数量，sun）。 */
+/** 查询授权额度（owner 授权给 spender 的 USDD 数量，sun）。优先客户端，回退到只读 RPC。 */
 export async function usddAllowance(
   owner: string,
   spender: string,
 ): Promise<bigint> {
-  const tw = getClientTronWeb() || getServerTronWeb();
-  if (!tw) throw new Error("TronWeb 不可用，无法查询授权额度");
+  const tw = getClientTronWeb() || getReadOnlyTronWeb();
   const c = await tw.contract(USDD_ABI as any).at(USDD_ADDRESS);
   const allowance: string = await c.allowance(owner, spender).call();
   return BigInt(allowance);

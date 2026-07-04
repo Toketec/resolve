@@ -6,6 +6,7 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { TradePanel } from "@/components/trade-panel";
 import { PriceChart } from "@/components/price-chart";
 import { OracleDeliberation } from "@/components/oracle-deliberation";
+import { ClaimRewardButton } from "@/components/claim-reward-button";
 import { getMarketBySlug, getAgents, getMarketTrades } from "@/lib/data-server";
 import { getPoolState } from "@/lib/contract/settlement";
 import { type ApiAgent } from "@/lib/mappers";
@@ -112,6 +113,11 @@ export default async function MarketDetailPage({ params }: PageProps) {
 
           {/* Consensus + Agent votes (interactive: force resolve, staged reveal, x402) */}
           <OracleDeliberation market={displayMarket} agents={agents} />
+
+          {/* Claim reward (resolved markets only) */}
+          {displayMarket.status === "resolved" && (
+            <ClaimRewardButton marketSlug={slug} />
+          )}
 
           {/* Resolution criteria */}
           <section className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">

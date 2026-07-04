@@ -1,38 +1,38 @@
 {
   "deployer": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
   "contract": "AgentRegistry",
-  "contractAddress": "TFnYi1Pou8N5gdFzggZcqYypGmpgTWnPeh",
-  "deployedAt": "2026-07-04T15:33:10.891Z",
+  "contractAddress": "TZ94qiZHbgBvvp8kQtpFoevprY1U9HHb8d",
+  "deployedAt": "2026-07-04T16:25:10.617Z",
   "agents": [
     {
       "agentId": "bull-1",
       "address": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
-      "txHash": "e389c84701b498a905bf90840d91bbab34cac43ced2002ed5f5f3019221029c6"
+      "txHash": "1529962ac2b73b978f93715e4b229ead4da32223a26f91efa306e4a80ec4b177"
     },
     {
       "agentId": "bull-2",
       "address": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
-      "txHash": "e5a0477798442cc5414bf424d1f272e36607c8259845242714442ce6f13b1962"
+      "txHash": "a050d5221cf149088d8101fee5b954e6728bf8686d24c23ad1e5ef7efae3568a"
     },
     {
       "agentId": "bear-1",
       "address": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
-      "txHash": "f2e582e4d0bf055c18be4e8477d737c5085ab0dc1b00d31d6447f6ef58bfc910"
+      "txHash": "1d30d1748d4ea6c516c234c2c1e35ea471784595f3ff217e637ae91390ad46b7"
     },
     {
       "agentId": "bear-2",
       "address": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
-      "txHash": "a84f091fe32a764521a20e3bb92a706204e1e74e306de31404a7c040479e7096"
+      "txHash": "99894c79dba72d3eba3abbc23d7cd0824dda5edea1b4c6b15d2bc12ccd920f30"
     },
     {
       "agentId": "neut-1",
       "address": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
-      "txHash": "5ec6a13219255cbb3efa4aaf2cb7127ec9bf5c70a6935d86af0875273409a995"
+      "txHash": "162e9dbe14e226cb4274ed224274882f27e715c4560b2866c4c75ed91715ffc9"
     },
     {
       "agentId": "neut-2",
       "address": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
-      "txHash": "f2e8e4d133d9a6c6b0bffe0f26249b0cd3b92561df00a15b07aabc37f5357ad7"
+      "txHash": "17e2cead56d85d3abb378dae58c02b691b75b3c73f3d5b8cbd96c434cbb06dc6"
     }
   ]
 }

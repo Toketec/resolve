@@ -10,7 +10,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Globe2, ShieldCheck, Zap, Loader2, BadgeCheck, Database } from "lucide-react";
 import { ConsensusMeter } from "@/components/consensus-meter";
-import { resolveMarketConsensus, settle as settleApi } from "@/lib/api-client";
+import { resolveMarketConsensus } from "@/lib/api-client";
+import { resolveOutcome } from "@/lib/contract/settlement";
 import { settleX402, type X402Receipt } from "@/lib/contract/x402";
 import { TRONSCAN_SHASTA, AGENT_REGISTRY_ADDRESS } from "@/lib/constants";
 import { formatPct } from "@/lib/utils";
@@ -152,10 +153,10 @@ export function OracleDeliberation({
   async function handleSettleAuto() {
     if (!display?.outcome) return;
     try {
-      const res = await settleApi({ marketId: market.id, outcome: display.outcome });
+      const res = await resolveOutcome(market.slug, display.outcome);
       setSettleTx({ txHash: res.txHash });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Settle failed");
+      setError(e instanceof Error ? e.message : "Resolve failed");
     }
   }
 

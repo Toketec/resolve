@@ -1,8 +1,7 @@
 // ─────────────────────────────────────────────
-// tronWeb 实例工厂 — 客户端 TronLink / 服务端私钥 / 只读 RPC 三模式
+// tronWeb 实例工厂 — 客户端 TronLink / 只读 RPC 两模式
 // ─────────────────────────────────────────────
 // 客户端: 从 window.tronLink.tronWeb 获取（用户 TronLink 浏览器扩展）
-// 服务端: 从 TRON_PRIVATE_KEY 环境变量构造（settle 用 owner 私钥签名）
 // 只读:   用公开 Shasta RPC 构造，无需私钥（纯 view 查询）
 // ─────────────────────────────────────────────
 
@@ -16,13 +15,6 @@ export function getClientTronWeb(): TronWeb | null {
   if (typeof window === "undefined") return null;
   const tw = (window as any).tronLink?.tronWeb ?? (window as any).tronWeb;
   return tw ?? null;
-}
-
-/** 服务端: 从环境变量私钥构造 tronWeb 实例。无私钥时返回 null。 */
-export function getServerTronWeb(): TronWeb | null {
-  const pk = process.env.TRON_PRIVATE_KEY;
-  if (!pk) return null;
-  return new TronWeb({ fullHost: FULL_HOST, privateKey: pk });
 }
 
 /** 只读实例: 用公开 RPC 构造，设置虚拟地址满足 TRON triggerConstantContract 的 owner_address 要求。 */

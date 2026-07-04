@@ -60,6 +60,8 @@ contract ResolveSettlement {
     );
     event FeesClaimed(address indexed claimer, uint256 amount);
     event Settled(bytes32 indexed marketId, bytes8 outcome, address indexed winner, uint256 payout);
+    event MarketResolved(bytes32 indexed marketId, bytes8 outcome);
+    event Claimed(bytes32 indexed marketId, address indexed winner, bool isYesWin, uint256 payout);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Resolve: not owner");
@@ -301,6 +303,60 @@ contract ResolveSettlement {
         }
 
         emit Settled(marketId, outcome, winners[0], totalPayout);
+    }
+
+    // ── Claim 式结算（无需 owner）─────────────────────────────
+
+    /**
+     * 提交市场结果。任何人可调——合约只记录 outcome，不涉及转账。
+     * 幂等：已 settled 的市场回滚；相同 outcome 重复调也会被 settled 检查拦截。
+     */
+    function resolveOutcome(bytes32 marketId, bytes8 outcome) external {
+        Market storage m = markets[marketId];
+        require(m.exists, "Resolve: no market");
+        require(!m.settled, "Resolve: settled");
+        m.settled = true;
+        m.outcome = outcome;
+        emit MarketResolved(marketId, outcome);
+    }
+
+    /**
+     * 赢家领取赔付。根据链上 stakes 自算应得金额，不需任何人传参。
+     * 每个赢家独立调，只领一次（领取后 stakes 清零防重入）。
+     * 计算公式：payout = availableBalance * userStake / totalWinningSupply
+     * availableBalance = 合约 USDD 余额 - feePool（排除平台费部分）
+     */
+    function claimReward(bytes32 marketId) external {
+        Market storage m = markets[marketId];
+        require(m.exists, "Resolve: no market");
+        require(m.settled, "Resolve: not resolved");
+
+        // YES 编码: bytes8(0x5945530000000000) — ASCII "YES" 左对齐
+        bool isYesWin = (m.outcome == bytes8(0x5945530000000000));
+        uint256 userStake = stakes[marketId][msg.sender][isYesWin];
+        require(userStake > 0, "Resolve: no winning stake");
+
+        uint256 totalWinningSupply = isYesWin ? m.yesSupply : m.noSupply;
+        require(totalWinningSupply > 0, "Resolve: no winning supply");
+
+        // 可分配池 = 合约 USDD 余额 - 平台费（feePool 是平台已提取部分，不可分配给赢家）
+        uint256 available = usdd.balanceOf(address(this));
+        // 避免 underflow：确保 balance >= feePool
+        if (available > m.feePool) {
+            available = available - m.feePool;
+        } else {
+            available = 0;
+        }
+        require(available > 0, "Resolve: no available funds");
+
+        // 按比例分配：payout = available * userStake / totalWinningSupply
+        uint256 payout = (available * userStake) / totalWinningSupply;
+
+        // 清零防重入（在转账前清零符合 checks-effects-interactions 模式）
+        stakes[marketId][msg.sender][isYesWin] = 0;
+
+        require(usdd.transfer(msg.sender, payout), "Resolve: claim transfer failed");
+        emit Claimed(marketId, msg.sender, isYesWin, payout);
     }
 
     // ── 只读查询 ──────────────────────────────────────────────

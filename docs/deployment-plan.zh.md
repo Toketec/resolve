@@ -121,7 +121,7 @@ node scripts/sync-agents-to-db.js
 3. 调用 `approve(SETTLEMENT_ADDRESS, amount)` 授权 USDD
 4. 合约自动注入流动性
 
-> 气囊模式（`AIRBAG_ENABLED=true`）下不需要此步骤，系统走模拟流程。
+> 气囊模式已移除（Spec 17）。结算改为 Claim 模式：resolveOutcome + claimReward，均由用户 TronLink 签名，无需服务端私钥。
 
 ---
 
@@ -147,7 +147,7 @@ node scripts/sync-agents-to-db.js
 
 ### 4.3 设置环境变量
 
-在 Vercel 项目 **Settings → Environment Variables** 中添加以下 13 个变量：
+在 Vercel 项目 **Settings → Environment Variables** 中添加以下 11 个变量：
 
 **① 数据库（从第二章获取）**
 
@@ -166,8 +166,6 @@ node scripts/sync-agents-to-db.js
 | `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | 3.2 部署输出的 AgentRegistry 地址 |
 | `NEXT_PUBLIC_TRON_FULL_HOST` | `https://api.shasta.trongrid.io` |
 | `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `live`（从链上读取地址）或 `preconfig`（用预设地址） |
-| `NEXT_PUBLIC_AIRBAG_ENABLED` | `true`（模拟结算，适合演示） |
-| `TRON_PRIVATE_KEY` | 部署钱包私钥（仅 Production 环境，用于 settle 签名） |
 
 **③ AI 推理（可选，不配则自动 mock）**
 
@@ -254,7 +252,7 @@ curl https://resolve-prediction.vercel.app/api/price/BTC/kline
 | 场景 | 预期表现 |
 |------|---------|
 | Supabase 不可用 | 页面显示 mock 数据，不崩溃 |
-| 合约地址未配置 | 气囊模式自动开启，走模拟流程 |
+| 合约地址未配置 | 走只读模式，不崩溃 |
 | 无 LLM API Key | AI 共识走 mock 兜底，不报错 |
 | 未安装 TronLink | 显示"请安装 TronLink"提示 |
 
@@ -275,4 +273,4 @@ curl https://resolve-prediction.vercel.app/api/price/BTC/kline
 | 9 | i18n 地理检测中间件 | 应用层 | Vercel | 随 Next.js 部署 |
 | 10 | 池状态刷新定时任务 | 定时任务 | Vercel Cron | `vercel.json` 配置 |
 | 11 | AI 共识推理 | 按需调用 | Vercel API | 作为 API 路由的一部分 |
-| 12 | 13 个环境变量 | 配置 | Vercel | 手动填入 |
+| 12 | 11 个环境变量 | 配置 | Vercel | 手动填入 |

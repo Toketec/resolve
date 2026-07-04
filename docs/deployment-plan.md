@@ -115,7 +115,7 @@ For real buy/sell flow (not mock):
 2. `marketId` must match DB's `btc-150k-eoy` (bytes32 encoded)
 3. Call `approve(SETTLEMENT_ADDRESS, amount)` for USDD
 
-> Skip if using airbag mode (`AIRBAG_ENABLED=true`) — system uses simulated flow.
+> Airbag mode removed (Spec 17). Settlement uses Claim mode: resolveOutcome + claimReward, both signed by user TronLink, no server private key needed.
 
 ---
 
@@ -141,7 +141,7 @@ For real buy/sell flow (not mock):
 
 ### 4.3 Environment variables
 
-Add these 13 variables in Vercel **Settings → Environment Variables**:
+Add these 11 variables in Vercel **Settings → Environment Variables**:
 
 **① Database (from Chapter 2)**
 
@@ -160,8 +160,6 @@ Add these 13 variables in Vercel **Settings → Environment Variables**:
 | `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | AgentRegistry contract address |
 | `NEXT_PUBLIC_TRON_FULL_HOST` | `https://api.shasta.trongrid.io` |
 | `NEXT_PUBLIC_AGENT_REGISTRY_MODE` | `live` (read from chain) or `preconfig` |
-| `NEXT_PUBLIC_AIRBAG_ENABLED` | `true` (simulated settlement) |
-| `TRON_PRIVATE_KEY` | Wallet private key (Production only) |
 
 **③ AI Inference (optional, auto-mock if absent)**
 
@@ -248,7 +246,7 @@ curl https://resolve-prediction.vercel.app/api/price/BTC/kline
 | Scenario | Expected |
 |----------|----------|
 | Supabase unreachable | Page shows mock data, no crash |
-| No contract address configured | Airbag mode auto-activates |
+| No contract address configured | Read-only mode, no crash |
 | No LLM API key | AI consensus uses mock fallback |
 | TronLink not installed | Shows "install TronLink" prompt |
 
@@ -269,4 +267,4 @@ curl https://resolve-prediction.vercel.app/api/price/BTC/kline
 | 9 | i18n geo middleware | App layer | Vercel | Deployed with Next.js |
 | 10 | Pool state refresh cron | Scheduled | Vercel Cron | `vercel.json` config |
 | 11 | AI consensus inference | On-demand | Vercel API | Part of API routes |
-| 12 | 13 environment variables | Config | Vercel | Manual entry |
+| 12 | 11 environment variables | Config | Vercel | Manual entry |

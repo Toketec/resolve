@@ -1,13 +1,11 @@
 // ─────────────────────────────────────────────
-// ResolveSettlement 合约封装 — buyShares / sellShares / settle / getPoolState / claimFees
+// ResolveSettlement 合约封装
 // ─────────────────────────────────────────────
-// buyShares / sellShares: 客户端 TronLink 签名（用户用自己的钱包交易）
-// createMarket: 客户端 TronLink 签名（创建者支付 L USDD 流动性 + 10 USDD 创建费）
-// settle / settleBatch / claimMarketFees: 服务端 owner 私钥签名
-// getMarket / getPoolState: 只读查询（客户端/服务端均可）
+// buyShares / sellShares / createMarket / resolveOutcome / claimReward: 客户端 TronLink 签名
+// getMarket / getPoolState: 只读查询
 // ─────────────────────────────────────────────
 
-import { getClientTronWeb, getServerTronWeb, getReadOnlyTronWeb } from "./tronweb";
+import { getClientTronWeb, getReadOnlyTronWeb } from "./tronweb";
 import { SETTLEMENT_ADDRESS, SETTLEMENT_ABI } from "@/lib/constants";
 import type { Outcome } from "@/lib/types";
 
@@ -108,28 +106,46 @@ export async function sellShares(
   return { txHash };
 }
 
-// ── 服务端结算（owner 私钥签名）────────────────────────
+// ── Claim 式结算（客户端 TronLink 签名）─────────────
 
 /**
- * 真实结算：向赢家转账赔付。
- * 由服务端 owner 私钥签名，仅 API route 中可用。
+ * 提交市场结果（resolveOutcome）。任何人可调，合约只记录 outcome 不转账。
+ * 共识达成后由前端通过 TronLink 签名提交。
  */
-export async function settle(
+export async function resolveOutcome(
   marketId: string,
   outcome: Outcome,
-  winner: string,
-  payoutSun: bigint,
-): Promise<string> {
-  const tw = getServerTronWeb();
-  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
-  // 服务端 tronweb npm 包 v6: .contract(ABI, ADDRESS)
-  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
+): Promise<{ txHash: string }> {
+  const tw = getClientTronWeb();
+  if (!tw) throw new Error("TronLink 未安装/未连接，无法提交结果");
+
+  const from = tw.defaultAddress?.base58;
+  const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
   const mid = marketIdToBytes32(marketId);
   const out8 = outcomeToBytes8(outcome);
-  const txHash: string = await (c as any)
-    .settle(mid, out8, winner, String(payoutSun))
-    .send({ feeLimit: 1_000_000_000, callValue: 0 });
-  return txHash;
+  const txHash: string = await c
+    .resolveOutcome(mid, out8)
+    .send({ feeLimit: 1_000_000_000, callValue: 0, ...(from ? { from } : {}) });
+  return { txHash };
+}
+
+/**
+ * 赢家领钱（claimReward）。赢家自己调，合约自算赔付。
+ * 每个赢家独立调，只领一次（合约清零 stakes 防重入）。
+ */
+export async function claimReward(
+  marketId: string,
+): Promise<{ txHash: string }> {
+  const tw = getClientTronWeb();
+  if (!tw) throw new Error("TronLink 未安装/未连接，无法领钱");
+
+  const from = tw.defaultAddress?.base58;
+  const c = await tw.contract(SETTLEMENT_ABI as any).at(SETTLEMENT_ADDRESS);
+  const mid = marketIdToBytes32(marketId);
+  const txHash: string = await c
+    .claimReward(mid)
+    .send({ feeLimit: 1_000_000_000, callValue: 0, ...(from ? { from } : {}) });
+  return { txHash };
 }
 
 // ── 只读查询 ───────────────────────────────────────────
@@ -166,44 +182,6 @@ export async function getPoolState(marketId: string): Promise<{
     liquidity: BigInt(String(arr[4])),
     feePool: BigInt(String(arr[5])),
   };
-}
-
-/**
- * 批量结算：向多个赢家转账赔付。
- * 由服务端 owner 私钥签名，仅 API route 中可用。
- */
-export async function settleBatch(
-  marketId: string,
-  outcome: Outcome,
-  winners: string[],
-  payouts: bigint[],
-): Promise<string> {
-  const tw = getServerTronWeb();
-  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
-
-  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
-  const mid = marketIdToBytes32(marketId);
-  const out8 = outcomeToBytes8(outcome);
-  const txHash: string = await (c as any)
-    .settleBatch(mid, out8, winners, payouts.map(String))
-    .send({ feeLimit: 10_000_000_000, callValue: 0 });
-  return txHash;
-}
-
-// ── 服务端费用提取 ────────────────────────────────────
-
-/**
- * 提取指定市场的平台费（owner 私钥签名，仅服务端可用）。
- */
-export async function claimMarketFees(marketId: string): Promise<string> {
-  const tw = getServerTronWeb();
-  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
-  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
-  const mid = marketIdToBytes32(marketId);
-  const txHash: string = await (c as any)
-    .claimMarketFees(mid)
-    .send({ feeLimit: 1_000_000_000, callValue: 0 });
-  return txHash;
 }
 
 // ── 工具函数 ────────────────────────────────────────────
