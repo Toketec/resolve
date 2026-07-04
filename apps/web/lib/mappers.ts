@@ -10,6 +10,7 @@
 import type { Market, Agent, MarketStatus, Outcome, PricePoint } from "@/lib/types";
 import type { MarketRow, AgentRow, PoolStateRow } from "@resolve/db";
 import { MOCK_MARKETS } from "@/lib/mock";
+import { getAgentAddress } from "@/lib/bai/agent-registry";
 
 // ── status 枚举映射 ───────────────────────────────────────────
 // DB: 'active' | 'resolving' | 'resolved' | 'settled'
@@ -155,7 +156,7 @@ export function agentRowToAgent(row: AgentRow): ApiAgent {
     tier: row.tier,
     stance: row.stance,
     poweredBy: row.powered_by ?? "GPT",
-    ba8004Id: row.ba_8004_id ?? derive8004Id(row.agent_id),
+    ba8004Id: getAgentAddress(row.agent_id, row.ba_8004_id) ?? derive8004Id(row.agent_id),
   };
 }
 

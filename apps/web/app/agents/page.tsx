@@ -148,8 +148,14 @@ export default async function AgentsPage() {
                   <Mini label="Resolutions" value={a.resolutions.toLocaleString()} tone={tone.ink} />
                   <Mini label="Avg conf" value={formatPct(a.avgConfidence)} tone={tone.ink} />
                 </div>
-                <div className={`font-score relative mt-4 flex flex-wrap items-center justify-between gap-2 border-t-2 border-current pt-3 text-[10px] font-bold uppercase tracking-wider ${dimClass}`}>
-                  <span>model · {a.modelHint}</span>
+                <div className={`font-score relative mt-4 flex flex-col gap-1 border-t-2 border-current pt-3 text-[10px] font-bold uppercase tracking-wider ${dimClass}`}>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span>model · {a.modelHint}</span>
+                    {a.modelHint.includes("B.AI") && (
+                      <span className="rounded-full border border-current px-1.5 py-px text-[9px] text-pitch-600 dark:text-pitch-400">⚡ Powered by B.AI</span>
+                    )}
+                  </div>
+                  <span>$HTX earned · {(a.htxEarned ?? 0).toLocaleString()} USDD</span>
                   <span>{a.region}</span>
                 </div>
               </div>

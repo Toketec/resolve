@@ -38,6 +38,7 @@ export interface Market {
   consensus?: AIConsensus;
   settlementTxHash?: string | null;
   related?: string[];
+  htxBuybackTotal?: number; // 累计 $HTX Buyback USDD 等价值
 }
 
 export type AgentKind =
@@ -63,6 +64,7 @@ export interface Agent {
   status: "online" | "syncing" | "offline";
   tier?: string;
   weight?: number;
+  htxEarned?: number; // 累计 $HTX 收益（USDD 等价值）
 }
 
 export interface AgentVote {

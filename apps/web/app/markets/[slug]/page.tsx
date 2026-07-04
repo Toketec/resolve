@@ -97,51 +97,30 @@ export default async function MarketDetailPage({ params }: PageProps) {
         </Link>
       </nav>
 
-      {/* Title block */}
-      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <CategoryChip category={displayMarket.category} size="md" />
-            <StatusChip status={displayMarket.status} />
-            {poolState && (
-              <span className="inline-flex items-center gap-1 rounded-full border-2 border-ink bg-goal-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink">
-                ● live chain
-              </span>
-            )}
-            <span className="font-score text-[11px] font-bold uppercase tracking-wider text-muted">
-              expires {formatRelative(displayMarket.expiresAt)}
-            </span>
-          </div>
-          <h1 className="font-display mt-4 text-4xl font-black uppercase leading-[0.95] tracking-tight text-ink sm:text-5xl">
-            {displayMarket.title}
-          </h1>
-          <p className="mt-4 max-w-2xl text-base font-medium text-ink/75">{displayMarket.description}</p>
-        </div>
-        <div className="grid w-full max-w-md grid-cols-2 gap-3">
-          {poolState ? (
-            <>
-              <KPI label="YES price" value={formatPct(poolState.yesPrice)} accent={poolState.yesPrice >= 0.5 ? "#00B14F" : "#FF2D6F"} />
-              <KPI label="NO price" value={formatPct(poolState.noPrice)} accent={poolState.noPrice >= 0.5 ? "#00B14F" : poolState.noPrice > 0.3 ? "#0A0A0A" : "#FF2D6F"} />
-              <KPI label="Liquidity" value={formatUSD(Number(poolState.liquidity) / 1e6, { compact: true })} />
-              <KPI label="Pool fees" value={formatUSD(Number(poolState.feePool) / 1e6, { compact: true })} />
-            </>
-          ) : (
-            <>
-              <KPI label="Volume" value={formatUSD(displayMarket.volumeUSD, { compact: true })} />
-              <KPI label="Liquidity" value={formatUSD(displayMarket.liquidityUSD, { compact: true })} />
-              <KPI label="Traders" value={displayMarket.traders.toLocaleString()} />
-              <KPI
-                label={displayMarket.status === "resolved" ? "Outcome" : "YES price"}
-                value={displayMarket.status === "resolved" ? displayMarket.resolvedOutcome ?? "—" : formatPct(displayMarket.yesPrice)}
-                accent={displayMarket.yesPrice >= 0.5 ? "#00B14F" : "#FF2D6F"}
-              />
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-10 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+      {/* Two-column layout: left = content, right = KPIs + sidebar */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+        {/* LEFT COLUMN */}
         <div className="space-y-6">
+          {/* Title section */}
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <CategoryChip category={displayMarket.category} size="md" />
+              <StatusChip status={displayMarket.status} />
+              {poolState && (
+                <span className="inline-flex items-center gap-1 rounded-full border-2 border-ink bg-goal-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink">
+                  ● live chain
+                </span>
+              )}
+              <span className="font-score text-[11px] font-bold uppercase tracking-wider text-muted">
+                expires {formatRelative(displayMarket.expiresAt)}
+              </span>
+            </div>
+            <h1 className="font-display mt-4 text-4xl font-black uppercase leading-[0.95] tracking-tight text-ink sm:text-5xl">
+              {displayMarket.title}
+            </h1>
+            <p className="mt-4 text-base font-medium text-ink/75">{displayMarket.description}</p>
+          </div>
+
           <PriceChart history={displayMarket.history} yesPrice={displayMarket.yesPrice} />
 
           {/* Consensus + Agent votes (interactive: force resolve, staged reveal, x402) */}
@@ -214,8 +193,33 @@ export default async function MarketDetailPage({ params }: PageProps) {
           </section>
         </div>
 
-        {/* Sidebar */}
+        {/* RIGHT SIDEBAR: KPIs + trade + details */}
         <aside className="space-y-6">
+          {/* Market KPIs */}
+          <div className="grid grid-cols-2 gap-3">
+            {poolState ? (
+              <>
+                <KPI label="YES price" value={formatPct(poolState.yesPrice)} accent={poolState.yesPrice >= 0.5 ? "#00B14F" : "#FF2D6F"} />
+                <KPI label="NO price" value={formatPct(poolState.noPrice)} accent={poolState.noPrice >= 0.5 ? "#00B14F" : poolState.noPrice > 0.3 ? "#0A0A0A" : "#FF2D6F"} />
+                <KPI label="Liquidity" value={formatUSD(Number(poolState.liquidity) / 1e6, { compact: true })} />
+                <KPI label="Pool fees" value={formatUSD(Number(poolState.feePool) / 1e6, { compact: true })} />
+                <KPI label="HTX Stake" value={formatUSD(Number(poolState.feePool) / 1e6, { compact: true }) + " $HTX"} className="col-span-2" />
+              </>
+            ) : (
+              <>
+                <KPI label="Volume" value={formatUSD(displayMarket.volumeUSD, { compact: true })} />
+                <KPI label="Liquidity" value={formatUSD(displayMarket.liquidityUSD, { compact: true })} />
+                <KPI label="Traders" value={displayMarket.traders.toLocaleString()} />
+                <KPI
+                  label={displayMarket.status === "resolved" ? "Outcome" : "YES price"}
+                  value={displayMarket.status === "resolved" ? displayMarket.resolvedOutcome ?? "—" : formatPct(displayMarket.yesPrice)}
+                  accent={displayMarket.yesPrice >= 0.5 ? "#00B14F" : "#FF2D6F"}
+                />
+                <KPI label="HTX Stake" value="— (airbag)" className="col-span-2" />
+              </>
+            )}
+          </div>
+
           <TradePanel market={displayMarket} />
 
           <div className="overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-stamp-sm">
@@ -269,9 +273,9 @@ export default async function MarketDetailPage({ params }: PageProps) {
   );
 }
 
-function KPI({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function KPI({ label, value, accent, className }: { label: string; value: string; accent?: string; className?: string }) {
   return (
-    <div className="rounded-2xl border-2 border-ink bg-card px-3 py-3 shadow-stamp-sm">
+    <div className={`rounded-2xl border-2 border-ink bg-card px-3 py-3 shadow-stamp-sm ${className ?? ""}`}>
       <p className="font-score text-[10px] font-bold uppercase tracking-wider text-muted">
         {label}
       </p>

@@ -239,6 +239,9 @@ export function OracleDeliberation({
                         </p>
                         <p className="truncate font-score text-[10px] font-bold uppercase tracking-wider text-muted">
                           {v.callsign} · {agent?.poweredBy ?? "GPT"}
+                          {agent?.poweredBy?.includes("B.AI") && (
+                            <span className="ml-1.5 text-pitch-600">⚡ Powered by B.AI</span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -259,7 +262,7 @@ export function OracleDeliberation({
                   {/* 8004 身份 */}
                   {agent?.ba8004Id && (
                     <a
-                      href={`${TRONSCAN_SHASTA}/#/address/${market.creator.address}`}
+                      href={`${TRONSCAN_SHASTA}/#/address/${agent.ba8004Id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-3 inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink transition hover:bg-raised"
@@ -268,6 +271,13 @@ export function OracleDeliberation({
                       <span className="truncate">8004 · {agent.ba8004Id}</span>
                       <span className="shrink-0"><ExternalLink className="size-3 text-muted" /></span>
                     </a>
+                  )}
+
+                  {/* $HTX Earned */}
+                  {agent?.htxEarned !== undefined && (
+                    <p className="mt-1.5 font-score text-[10px] font-bold uppercase tracking-wider text-muted">
+                      $HTX earned: {agent.htxEarned.toLocaleString()} USDD
+                    </p>
                   )}
 
                   <div className="mt-3 space-y-2">

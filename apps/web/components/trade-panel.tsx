@@ -23,6 +23,7 @@ import { SETTLEMENT_ADDRESS, TRONSCAN_SHASTA } from "@/lib/constants";
 
 const QUICK = [25, 100, 500];
 const PRICE_DECIMALS = 1e18; // 合约价格精度
+const BUYBACK_LS_KEY = "resolve.htxBuybackTotal";
 
 type TradeMode = "buy" | "sell";
 type TradePhase =
@@ -52,6 +53,7 @@ export function TradePanel({ market }: { market: Market }) {
   const [trade, setTrade] = useState<TradeState>({ phase: "idle", mode: "buy" });
   const [balance, setBalance] = useState<PositionBalance>({ yesBalance: 0, noBalance: 0 });
   const [loadingBalance, setLoadingBalance] = useState(false);
+  const [buybackTotal, setBuybackTotal] = useState(0);
   const { connected, address, connect, connecting } = useWallet();
 
   // ── AMM 价格计算 ──
@@ -88,6 +90,25 @@ export function TradePanel({ market }: { market: Market }) {
   const sellDisabled = mode === "sell" && sellShares > maxSellShares;
 
   const accent = side === "YES" ? "#00B14F" : "#FF2D6F";
+
+  // ── $HTX Buyback 计数器 ──
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(BUYBACK_LS_KEY);
+      if (raw) {
+        const v = Number(raw);
+        if (!isNaN(v)) setBuybackTotal(v);
+      }
+    } catch { /* localStorage 不可用静默降级 */ }
+  }, []);
+
+  function addBuyback(fee: number) {
+    setBuybackTotal((prev) => {
+      const next = prev + fee * 0.5;
+      try { localStorage.setItem(BUYBACK_LS_KEY, String(next)); } catch {}
+      return next;
+    });
+  }
 
   // ── 加载持仓 ──
   const loadBalance = useCallback(async () => {
@@ -162,6 +183,7 @@ export function TradePanel({ market }: { market: Market }) {
         side,
         shares: res.shares,
       });
+      addBuyback(buyFee);
       setAmount("");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "交易失败";
@@ -230,6 +252,7 @@ export function TradePanel({ market }: { market: Market }) {
         side,
         shares: res.shares,
       });
+      addBuyback(sellFee);
       setAmount("");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "交易失败";
@@ -491,7 +514,7 @@ export function TradePanel({ market }: { market: Market }) {
         )}
 
         <p className="font-score mt-3 text-center text-[10px] font-bold uppercase tracking-wider text-muted">
-          0.10% fee · resolves via AI consensus
+          0.10% fee → $HTX Buyback: {formatUSD(buybackTotal, { compact: true })} USDD · resolves via AI consensus
         </p>
       </div>
     </div>

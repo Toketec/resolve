@@ -17,6 +17,7 @@ export const MOCK_AGENTS: Agent[] = [
     status: "online",
     tier: "BULL",
     weight: 1.0,
+    htxEarned: 450,
   },
   {
     id: "bull-2",
@@ -34,6 +35,7 @@ export const MOCK_AGENTS: Agent[] = [
     status: "online",
     tier: "BULL",
     weight: 0.8,
+    htxEarned: 320,
   },
   {
     id: "bear-1",
@@ -51,6 +53,7 @@ export const MOCK_AGENTS: Agent[] = [
     status: "online",
     tier: "BEAR",
     weight: 0.8,
+    htxEarned: 280,
   },
   {
     id: "bear-2",
@@ -68,6 +71,7 @@ export const MOCK_AGENTS: Agent[] = [
     status: "online",
     tier: "BEAR",
     weight: 0.8,
+    htxEarned: 140,
   },
   {
     id: "neut-1",
@@ -85,6 +89,7 @@ export const MOCK_AGENTS: Agent[] = [
     status: "online",
     tier: "NEUT",
     weight: 0.9,
+    htxEarned: 510,
   },
   {
     id: "neut-2",
@@ -102,6 +107,7 @@ export const MOCK_AGENTS: Agent[] = [
     status: "online",
     tier: "NEUT",
     weight: 0.9,
+    htxEarned: 230,
   },
 ];
 
