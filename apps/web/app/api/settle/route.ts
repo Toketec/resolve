@@ -1,8 +1,7 @@
 // POST /api/settle — 结算（赔付赢家）
-// 气囊模式：调用 settleSimulated()（标记已结算，不转账）
-// 真实模式：查询赢家持仓 → 按比例计算赔付 → settleBatch() 批量转账
+// 查询赢家持仓 → 按比例计算赔付 → settleBatch() 批量转账
 // 使用服务端 owner 私钥签名（TRON_PRIVATE_KEY 环境变量）。
-import { settleSimulated, settleBatch, getPoolState, isAirbag } from "@/lib/contract/settlement";
+import { settleBatch, getPoolState } from "@/lib/contract/settlement";
 import { usddBalanceOf } from "@/lib/contract/usdd";
 import { SETTLEMENT_ADDRESS } from "@/lib/constants";
 import { listPositionsByMarket, updateMarket } from "@resolve/db";
@@ -25,7 +24,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { marketId, outcome, winnerWallet, payoutSun } = body;
+  const { marketId, outcome } = body;
   if (!marketId || !outcome) {
     return Response.json(
       { error: "Missing required fields: marketId, outcome" },
@@ -33,29 +32,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const airbag = isAirbag();
-
   try {
-    if (airbag) {
-      // ── 气囊模式：调用 settleSimulated（标记已结算，不转账）──
-      const txHash = await settleSimulated(marketId, outcome);
-      // 更新 DB 市场状态
-      await updateMarket(marketId, {
-        status: "settled",
-        resolved_outcome: outcome,
-        settlement_tx_hash: txHash,
-      });
-      return Response.json({
-        marketId,
-        outcome,
-        txHash,
-        paidOut: false,
-        simulated: true,
-      });
-    }
-
-    // ── 真实模式：查询赢家 → 按比例计算 → 批量转账 ──
-
     // ① 查询所有持仓
     const positions = await listPositionsByMarket(marketId);
 
@@ -68,18 +45,14 @@ export async function POST(req: Request) {
 
     // 无赢家 → 仅标记已结算
     if (winners.length === 0) {
-      const simTx = await settleSimulated(marketId, outcome);
       await updateMarket(marketId, {
         status: "settled",
         resolved_outcome: outcome,
-        settlement_tx_hash: simTx,
       });
       return Response.json({
         marketId,
         outcome,
-        txHash: simTx,
         paidOut: false,
-        simulated: false,
         note: "No winning positions to pay out",
       });
     }
@@ -92,22 +65,14 @@ export async function POST(req: Request) {
       const poolState = await getPoolState(marketId);
       feePool = poolState.feePool;
     } catch (e) {
-      // 余额查询失败时降级为气囊模式
-      console.warn("[api/settle] Balance query failed, falling back to simulated:", e);
-      const simTx = await settleSimulated(marketId, outcome);
-      await updateMarket(marketId, {
-        status: "settled",
-        resolved_outcome: outcome,
-        settlement_tx_hash: simTx,
-      });
-      return Response.json({
-        marketId,
-        outcome,
-        txHash: simTx,
-        paidOut: false,
-        simulated: true,
-        note: "Failed to query on-chain balance — fallback to simulated",
-      });
+      console.error("[api/settle] Balance query failed:", e);
+      return Response.json(
+        {
+          error:
+            "Failed to query on-chain balance — check contract state and RPC connection",
+        },
+        { status: 500 },
+      );
     }
 
     const availablePool = contractBalance - feePool;
@@ -169,7 +134,6 @@ export async function POST(req: Request) {
       outcome,
       txHash,
       paidOut: true,
-      simulated: false,
       winnerCount: winners.length,
       totalPayout: String(totalPayout),
     });

@@ -59,18 +59,15 @@ function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
-/** 决定性 mock 答案（无 key/失败时用），按温度给出合理偏向。 */
+/** 确定性 mock 答案（无 key/失败时用），DEV 模式使用随机投票。 */
 function mockAnswer(opts: AskOptions): AgentAnswer {
-  const map = {
-    bullish: { outcome: "YES" as Outcome, confidence: 0.8 },
-    bearish: { outcome: "NO" as Outcome, confidence: 0.58 },
-    neutral: { outcome: "YES" as Outcome, confidence: 0.68 },
-  };
-  const { outcome, confidence } = map[opts.temperament];
+  // 随机投票替代固定偏向
+  const outcome: Outcome = Math.random() > 0.5 ? "YES" : "NO";
+  const confidence = 0.5 + Math.random() * 0.4; // 0.5 ~ 0.9
   return {
     outcome,
-    confidence,
-    rationale: `(offline) ${opts.temperament} reading of the curated evidence set.`,
+    confidence: Number(confidence.toFixed(2)),
+    rationale: `(dev mode) Random vote for testing.`,
     evidenceRefs: opts.fallbackEvidenceRefs.slice(0, 2),
     provider: "mock",
   };

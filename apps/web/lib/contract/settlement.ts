@@ -3,17 +3,16 @@
 // ─────────────────────────────────────────────
 // buyShares / sellShares: 客户端 TronLink 签名（用户用自己的钱包交易）
 // createMarket: 客户端 TronLink 签名（创建者支付 L USDD 流动性 + 10 USDD 创建费）
-// settle / settleSimulated / claimMarketFees: 服务端 owner 私钥签名
+// settle / settleBatch / claimMarketFees: 服务端 owner 私钥签名
 // getMarket / getPoolState: 只读查询（客户端/服务端均可）
 // ─────────────────────────────────────────────
 
 import { getClientTronWeb, getServerTronWeb, getReadOnlyTronWeb } from "./tronweb";
-import { SETTLEMENT_ADDRESS, SETTLEMENT_ABI, AIRBAG_ENABLED } from "@/lib/constants";
+import { SETTLEMENT_ADDRESS, SETTLEMENT_ABI } from "@/lib/constants";
 import type { Outcome } from "@/lib/types";
 
 export interface ChainResult {
   txHash: string;
-  simulated: boolean;
 }
 
 // ── 编码工具 ───────────────────────────────────────────
@@ -35,13 +34,6 @@ function outcomeToBytes8(outcome: Outcome): string {
     hex += outcome.charCodeAt(i).toString(16).padStart(2, "0");
   }
   return "0x" + hex.padEnd(16, "0");
-}
-
-// ── 状态判断 ───────────────────────────────────────────
-
-/** 是否处于气囊/未部署模式（不触链或走 settleSimulated）。 */
-export function isAirbag(): boolean {
-  return AIRBAG_ENABLED || !SETTLEMENT_ADDRESS;
 }
 
 // ── 客户端交易（TronLink 签名）─────────────────────
@@ -117,26 +109,6 @@ export async function sellShares(
 }
 
 // ── 服务端结算（owner 私钥签名）────────────────────────
-
-/**
- * 气囊结算：标记市场已结算，不进行真实转账。
- * 由服务端 owner 私钥签名，仅 API route 中可用。
- */
-export async function settleSimulated(
-  marketId: string,
-  outcome: Outcome,
-): Promise<string> {
-  const tw = getServerTronWeb();
-  if (!tw) throw new Error("服务端 TronWeb 未配置（缺少 TRON_PRIVATE_KEY）");
-  // 服务端 tronweb npm 包 v6: .contract(ABI, ADDRESS)
-  const c = tw.contract(SETTLEMENT_ABI as any, SETTLEMENT_ADDRESS);
-  const mid = marketIdToBytes32(marketId);
-  const out8 = outcomeToBytes8(outcome);
-  const txHash: string = await (c as any)
-    .settleSimulated(mid, out8)
-    .send({ feeLimit: 1_000_000_000, callValue: 0 });
-  return txHash;
-}
 
 /**
  * 真实结算：向赢家转账赔付。

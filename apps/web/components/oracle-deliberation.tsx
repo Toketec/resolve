@@ -64,7 +64,7 @@ export function OracleDeliberation({
   const [shown, setShown] = useState(initial?.votes.length ?? 0);
   const [isDev, setIsDev] = useState(false);
   const [x402, setX402] = useState<X402Receipt | null>(null);
-  const [settleTx, setSettleTx] = useState<{ txHash: string; simulated: boolean } | null>(null);
+  const [settleTx, setSettleTx] = useState<{ txHash: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const revealTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -92,7 +92,9 @@ export function OracleDeliberation({
       if (i >= consensus.votes.length) {
         if (revealTimer.current) clearInterval(revealTimer.current);
         setPhase("done");
-        // 共识达成 → x402 微支付
+        // 共识达成 → 自动触发结算
+        handleSettleAuto().catch(console.error);
+        // x402 微支付
         settleX402(consensus.votes.length).then(setX402).catch(() => {});
       }
     };
@@ -147,11 +149,11 @@ export function OracleDeliberation({
   const resolving = phase === "resolving";
   const settled = phase === "done";
 
-  async function handleSettle() {
+  async function handleSettleAuto() {
     if (!display?.outcome) return;
     try {
       const res = await settleApi({ marketId: market.id, outcome: display.outcome });
-      setSettleTx({ txHash: res.txHash, simulated: res.simulated });
+      setSettleTx({ txHash: res.txHash });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Settle failed");
     }
@@ -380,12 +382,12 @@ export function OracleDeliberation({
             )}
 
             {!settleTx ? (
-              <button
-                onClick={handleSettle}
-                className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-ink bg-pitch-500 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-ink shadow-stamp-sm transition hover:-translate-y-0.5 hover:shadow-stamp"
-              >
-                <Zap className="size-4" /> Settle on-chain · pay winners
-              </button>
+              <div className="flex items-center justify-center rounded-2xl border-2 border-ink bg-raised px-4 py-3">
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                <p className="font-score text-[11px] font-bold uppercase tracking-wider text-ink">
+                  Auto-settling on-chain…
+                </p>
+              </div>
             ) : (
               <div className="flex items-center justify-between rounded-2xl border-2 border-ink bg-pitch-50 px-4 py-3">
                 <p className="font-score text-[11px] font-black uppercase tracking-wider text-ink">

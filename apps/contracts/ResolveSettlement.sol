@@ -5,8 +5,8 @@ pragma solidity ^0.8.24;
  * ResolveSettlement — RESOLVE AMM 预测市场结算合约（TRON Shasta 测试网）
  *
  * 模型：线性债券曲线 AMM，支持买入/卖出 YES/NO 份额。
- * 管理员（owner）创建市场并注资流动性，用户在到期前可买入或卖出持仓；
- * AI 共识达成后 owner 调用 settle() 赔付赢家，settleSimulated() 为气囊模式。
+ * 任意用户可创建市场并注资流动性，用户在到期前可买入或卖出持仓；
+ * AI 共识达成后 owner 调用 settle() / settleBatch() 赔付赢家。任何用户可创建市场。
  *
  * AMM 公式:
  *   YES_price = 0.5 + net / (2 * L)   (clamped to [0.01, 0.99])
@@ -60,7 +60,6 @@ contract ResolveSettlement {
     );
     event FeesClaimed(address indexed claimer, uint256 amount);
     event Settled(bytes32 indexed marketId, bytes8 outcome, address indexed winner, uint256 payout);
-    event SettledSimulated(bytes32 indexed marketId, bytes8 outcome);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Resolve: not owner");
@@ -97,10 +96,10 @@ contract ResolveSettlement {
     // ── 创建市场 ──────────────────────────────────────────────
 
     /**
-     * owner 创建市场：存入 L USDD 流动性 + 支付 10 USDD 创建费。
-     * 总共从 owner 拉取 (liquidity + 10 USDD)。
+     * 用户创建市场：存入 L USDD 流动性 + 支付 10 USDD 创建费。
+     * 总共从创建者拉取 (liquidity + 10 USDD)。
      */
-    function createMarket(bytes32 marketId, uint256 liquidity) external onlyOwner {
+    function createMarket(bytes32 marketId, uint256 liquidity) external {
         require(!markets[marketId].exists, "Resolve: market exists");
 
         uint256 total = liquidity + CREATION_FEE;
@@ -271,16 +270,6 @@ contract ResolveSettlement {
             require(usdd.transfer(winner, payout), "Resolve: payout failed");
         }
         emit Settled(marketId, outcome, winner, payout);
-    }
-
-    /** 安全气囊：标记已结算但不转账（测试网不稳定时用）。 */
-    function settleSimulated(bytes32 marketId, bytes8 outcome) external onlyOwner {
-        Market storage m = markets[marketId];
-        require(m.exists, "Resolve: no market");
-        require(!m.settled, "Resolve: settled");
-        m.settled = true;
-        m.outcome = outcome;
-        emit SettledSimulated(marketId, outcome);
     }
 
     /// @notice 批量结算：向多个赢家赔付。owner 调用，仅一次。
