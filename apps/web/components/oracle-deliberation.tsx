@@ -8,11 +8,11 @@
 // ─────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Globe2, ShieldCheck, Zap, Loader2, BadgeCheck } from "lucide-react";
+import { ExternalLink, Globe2, ShieldCheck, Zap, Loader2, BadgeCheck, Database } from "lucide-react";
 import { ConsensusMeter } from "@/components/consensus-meter";
 import { resolveMarketConsensus, settle as settleApi } from "@/lib/api-client";
 import { settleX402, type X402Receipt } from "@/lib/contract/x402";
-import { TRONSCAN_SHASTA } from "@/lib/constants";
+import { TRONSCAN_SHASTA, AGENT_REGISTRY_ADDRESS } from "@/lib/constants";
 import { formatPct } from "@/lib/utils";
 import type { Market, AIConsensus, AgentVote } from "@/lib/types";
 import type { ApiAgent } from "@/lib/mappers";
@@ -183,6 +183,49 @@ export function OracleDeliberation({
       <div className="space-y-4 p-4">
         {display && <ConsensusMeter consensus={display} />}
 
+        {/* 链上身份验证 — AgentRegistry 合约 */}
+        {AGENT_REGISTRY_ADDRESS && (() => {
+          // 检测是否有 Agent 带了真实链上地址（DB 已同步）
+          const hasOnchain = agents.some(
+            (a) => a.ba8004Id && a.ba8004Id.startsWith("T") && !a.ba8004Id.startsWith("TXYZ"),
+          );
+          return (
+            <a
+              href={`${TRONSCAN_SHASTA}/#/address/${AGENT_REGISTRY_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between rounded-2xl border-2 border-pitch-500 bg-pitch-50 px-4 py-3 transition hover:-translate-y-0.5"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border-2 border-pitch-500 bg-pitch-100">
+                  <Database className="size-4 text-pitch-700" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <p className="font-score text-[10px] font-bold uppercase tracking-[0.15em] text-pitch-700">
+                    AgentRegistry · Shasta testnet
+                  </p>
+                  <p className="font-score text-[11px] font-bold text-ink">
+                    {AGENT_REGISTRY_ADDRESS}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-0.5 ${
+                  hasOnchain ? "border-pitch-500 bg-pitch-500" : "border-ink bg-card"
+                }`}>
+                  <BadgeCheck className={`size-3 ${hasOnchain ? "text-canvas" : "text-ink"}`} />
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${
+                    hasOnchain ? "text-canvas" : "text-ink"
+                  }`}>
+                    {hasOnchain ? "6 verified" : "verify →"}
+                  </span>
+                </span>
+                <ExternalLink className="size-3.5 text-pitch-600" />
+              </div>
+            </a>
+          );
+        })()}
+
         {/* resolving 且还没有任何票 → 骨架/思考态 */}
         {resolving && revealedVotes.length === 0 && (
           <div className="space-y-3">
@@ -259,19 +302,29 @@ export function OracleDeliberation({
                     </div>
                   </div>
 
-                  {/* 8004 身份 */}
-                  {agent?.ba8004Id && (
-                    <a
-                      href={`${TRONSCAN_SHASTA}/#/address/${agent.ba8004Id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink transition hover:bg-raised"
-                    >
-                      <span className="shrink-0"><BadgeCheck className="size-3 text-royal-700" /></span>
-                      <span className="truncate">8004 · {agent.ba8004Id}</span>
-                      <span className="shrink-0"><ExternalLink className="size-3 text-muted" /></span>
-                    </a>
-                  )}
+                  {/* 链上身份验证 — 数据来自 DB（deploy → sync 写入） */}
+                  {agent && (() => {
+                    const addr = agent.ba8004Id;
+                    // 真实 TRON 地址（以 T 开头且非占位符）
+                    const isRealAddr = addr && addr.startsWith("T") && !addr.startsWith("TXYZ");
+                    return isRealAddr ? (
+                      <a
+                        href={`${TRONSCAN_SHASTA}/#/address/${addr}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border-2 border-pitch-500 bg-pitch-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink transition hover:bg-pitch-100"
+                      >
+                        <span className="shrink-0"><BadgeCheck className="size-3 text-pitch-600" /></span>
+                        <span className="truncate">Verified on-chain · {addr.slice(0, 6)}…{addr.slice(-4)}</span>
+                        <span className="shrink-0"><ExternalLink className="size-3 text-muted" /></span>
+                      </a>
+                    ) : addr ? (
+                      <span className="mt-3 inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border-2 border-ink/20 bg-card px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted">
+                        <span className="shrink-0"><BadgeCheck className="size-3 text-muted" /></span>
+                        <span className="truncate">8004 · {addr}</span>
+                      </span>
+                    ) : null;
+                  })()}
 
                   {/* $HTX Earned */}
                   {agent?.htxEarned !== undefined && (

@@ -108,7 +108,7 @@ htxEarned?: number;         // 累计 $HTX 收益（USDD 等价值）
 
 ---
 
-## 模块 C：AgentRegistry 自建合约（~1h）
+## 模块 C：AgentRegistry 自建合约（~2h）
 
 ### C01 — 创建 AgentRegistry.sol（~15min）
 
@@ -147,28 +147,77 @@ contract AgentRegistry {
         return agents[agentId];
     }
     
-    function agentCount() external view returns (uint256) {
+    function agentCount() external pure returns (uint256) {
         // 固定 6 个 Agent
         return 6;
     }
 }
 ```
 
-### C02 — 部署脚本（~15min）
+### C02 — 部署脚本改造：统一 deploy.js（~15min）
 
-**文件**: 新建 `apps/contracts/scripts/deployAgentRegistry.js`（参考已有 deploy.js 格式）
+**文件**: `apps/contracts/scripts/deploy.js`
+
+部署 AgentRegistry 时：
+1. 调用 `deployArtifact(tronWeb, "AgentRegistry")` 部署合约
+2. 注册 6 个 Agent（feeLimit: 10 TRX 防止 OUT_OF_ENERGY）
+3. 收集部署信息（合约地址 + 每 Agent 的 txHash + TRON 地址）
+4. 输出 `deployment-output.json` 文件供 sync 脚本读取
+
+```javascript
+// deploy.js 部署完成后输出:
+{
+  "deployer": "TLVn5Sa9Y3fJjiGZwkjkiF1dmR1XQwwgcQ",
+  "contract": "AgentRegistry",
+  "contractAddress": "TUPKCih56sjeJD5SwvH3zZ8TPtdJDAv6vy",
+  "deployedAt": "2026-07-04T06:35:44.033Z",
+  "agents": [
+    { "agentId": "bull-1", "address": "TLVn5S...", "txHash": "5cd4f2..." },
+    // ... 共 6 个
+  ]
+}
+```
+
+### C02b — Supabase DB Migration（~5min）
+
+**文件**: 新建 `packages/db/migrations/00005_add_agent_onchain_fields.sql`
+
+```sql
+ALTER TABLE agents
+  ADD COLUMN IF NOT EXISTS tron_address       TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS deployment_tx_hash TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS registry_contract  TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS deployment_status  TEXT DEFAULT 'pending'
+    CHECK (deployment_status IN ('pending', 'deployed', 'failed')),
+  ADD COLUMN IF NOT EXISTS deployed_at        TIMESTAMPTZ DEFAULT NULL;
+```
+
+在 Supabase Dashboard → SQL Editor 中手动执行。
+
+**同时更新**：
+- `packages/db/src/types.ts` — AgentRow 新增对应的 TypeScript 字段
+- `packages/db/src/data.ts` — 新增 `updateAgentOnchain(agentId, input)` 函数
+- `packages/db/src/index.ts` — 导出新函数
+
+### C02c — 同步脚本（~15min）：部署 JSON → Supabase
+
+**文件**: 新建 `apps/contracts/scripts/sync-agents-to-db.js`
 
 功能：
-1. 编译 AgentRegistry.sol（或用已有 truffle/tronbox 编译流程）
-2. 部署到 Shasta
-3. 输出合约地址
-4. 调用 6 次 register() 注册 Agent
+1. 读取 `deployment-output.json`
+2. 从 `apps/web/.env` 自动加载 Supabase 凭据（SUPABASE_URL / SUPABASE_ANON_KEY）
+3. 通过 Supabase REST API (`PATCH /rest/v1/agents`) 逐条更新 6 个 Agent 的链上字段
+4. 无需额外 npm 依赖（使用 Node 18 内置的 fetch）
 
-**注册地址策略**：6 个 Agent 共享部署钱包地址（简单演示），后续可改为各自独立地址。
+用法：
+```bash
+cd apps/contracts
+node scripts/sync-agents-to-db.js
+```
 
 ### C03 — 前端配置层（~20min）
 
-**文件**: 新建 `apps/web/lib/bai/agent-registry.ts`
+**文件**: `apps/web/lib/bai/agent-registry.ts`
 
 ```typescript
 /**
@@ -177,65 +226,66 @@ contract AgentRegistry {
  * 三档模式（由 NEXT_PUBLIC_AGENT_REGISTRY_MODE 控制）：
  *   mock       - 使用 derive8004Id() 派生串（当前行为，默认）
  *   preconfig  - 使用本地预设的 TRON 地址（格式正确，无链上交易）
- *   live       - 从链上 AgentRegistry 合约实时读取
+ *   live       - 返回 DB tron_address（部署后 sync 写入）
  */
-
-type RegistryMode = 'mock' | 'preconfig' | 'live';
-const MODE: RegistryMode = 
-  (process.env.NEXT_PUBLIC_AGENT_REGISTRY_MODE as RegistryMode) || 'mock';
-
-// preconfig 模式：6 个硬编码 TRON 地址（部署后替换为真实地址）
-const PRECONFIG_ADDRESSES: Record<string, string> = {
-  'bull-1': 'TXYZ...01',
-  'bull-2': 'TXYZ...02',
-  'bear-1': 'TXYZ...03',
-  'bear-2': 'TXYZ...04',
-  'neut-1': 'TXYZ...05',
-  'neut-2': 'TXYZ...06',
-};
-
-export function getAgentAddress(agentId: string, dbValue: string | null): string | null {
-  switch (MODE) {
-    case 'live':
-      // 从 AgentRegistry 合约实时读取（需要合约已部署）
-      return dbValue ?? null;
-    case 'preconfig':
-      return PRECONFIG_ADDRESSES[agentId] ?? null;
-    default:
-      return null; // mock 模式 → 交给 derive8004Id 处理
-  }
-}
 ```
+
+live 模式下返回 `LIVE_ADDRESSES[agentId]` 作为降级值（部署者地址），实际以 DB 为准。
+
+新增导出函数：
+- `getAgentAddress(agentId, dbValue)` — 按模式返回地址
+- `getRegistryContractAddress()` — 返回合约地址
+- `getRegistryMode()` — 返回当前模式
 
 ### C04 — 修改 mappers.ts（~5min）
 
 **文件**: `apps/web/lib/mappers.ts`
 
-第 158 行修改 fallback 链：
+ba8004Id 降级链（越前优先级越高）：
 ```typescript
-// 原来: ba8004Id: row.ba_8004_id ?? derive8004Id(row.agent_id),
-// 改为:
-ba8004Id: getAgentAddress(row.agent_id, row.ba_8004_id) ?? derive8004Id(row.agent_id),
+ba8004Id: row.tron_address          // DB 部署字段（sync 写入）
+  ?? getAgentAddress(row.agent_id, row.ba_8004_id)  // 配置层（live/preconfig/mock）
+  ?? derive8004Id(row.agent_id),                     // 确定性派生（最终降级）
 ```
 
 ### C05 — 环境变量（~2min）
 
-**文件**: `.env.example`
+**文件**: `apps/web/.env`
 
-新增：
+```bash
+# Agent 链上身份注册
+NEXT_PUBLIC_AGENT_REGISTRY_MODE=live
+NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=<部署后的合约地址>
 ```
-# Agent 链上身份注册模式: mock | preconfig | live
-NEXT_PUBLIC_AGENT_REGISTRY_MODE=preconfig
-# AgentRegistry 合约地址（live 模式需要）
-NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=
+
+**文件**: `apps/web/lib/constants.ts`
+
+新增导出：
+```typescript
+export const AGENT_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS || "";
 ```
+
+### C06 — 前端链上验证 UI（~30min）
+
+**文件**: `apps/web/components/oracle-deliberation.tsx`
+
+1. **AgentRegistry 合约验证横幅**：在投票卡上方展示合约地址 + "6 verified" 绿色徽章，点击跳转 Shasta 浏览器
+2. **每张投票卡底部**：替换假 `8004:8004-XXX` → 绿色 `Verified on-chain · TLVn5S…gcQ` 徽章，点击跳转 Tronscan 验证地址
+3. **数据来源**：直接读 `agent.ba8004Id`（来自 DB），不再客户端调链上 RPC
+
+**文件**: `apps/web/app/agents/page.tsx`
+
+1. **舰队页顶部**：AgentRegistry 合约验证横幅
+2. **每张 Agent 卡片底部**：`on-chain · TLVn5S…gcQ` 地址行
 
 ---
 
 ## 注意事项
 
 1. **模块 A/B 不涉及合约调用，纯前端可视化** — 气囊模式下可直接开发验证
-2. **模块 C 的 preconfig 模式** — 不需要合约部署即可验证 UI，tronscan 链接可点击但地址查不到交易
+2. **模块 C 完整链路** — 部署合约 → SQL migration → sync 脚本 → Web 读 DB。Web 端不直接调链上 RPC，避免 Shasta 节点波动和 TronWeb `call()` 解码 bug
 3. **$HTX Buyback 计数器使用 localStorage 持久化** — 跨会话演示时可见累计值
 4. **所有 mock agent 的 htxEarned 用确定性值**，保证 SSR/CSR 一致
 5. **x402 保持 simulated**，等 B.AI 开通后改 URL 即可
+6. **注册 feeLimit 设为 10 TRX** — 避免 Shasta 测试网 energy 不足导致 OUT_OF_ENERGY
+7. **deployment-output.json 为部署快照** — 每次部署覆盖，保留最新一次注册结果

@@ -82,35 +82,59 @@
 
 ### 模块 C：AgentRegistry 自建合约（替换 B.AI 8004）
 
-**目标**：不再等 B.AI 开通。自建一个极简的 AgentRegistry 合约部署到 Shasta，为 6 个 Agent 注册链上地址。
+**目标**：不再等 B.AI 开通。自建一个极简的 AgentRegistry 合约部署到 Shasta，为 6 个 Agent 注册链上地址。部署后通过 sync 脚本将链上数据写入 Supabase，Web 端从 DB 读取展示。
 
-**合约逻辑**（~30 行 Solidity）：
+**合约逻辑**（~37 行 Solidity）：
 
 ```
 AgentRegistry.sol
 ├── mapping(string => address) public agents
 ├── register(string agentId, address agentAddress) → 外部调用
 ├── getAgent(string agentId) → view 查询
+├── agentCount() → pure 返回 6
 └── event Registered(agentId, agentAddress)
 ```
 
-**注册流程**：
-1. 部署 AgentRegistry 到 Shasta
-2. 调用 6 次 register("bull-1", T...), register("bull-2", T...), ...
-3. 每个 Agent 的地址可以是部署钱包地址，或生成 6 个独立地址
+**完整数据流（部署 → DB → Web）**：
+
+```
+deploy.js AgentRegistry
+  ↓ 产出 deployment-output.json（合约地址 + 每 Agent 的 txHash + TRON 地址）
+  ↓
+Supabase migration 00005（添加 tron_address / deployment_tx_hash / registry_contract / deployment_status / deployed_at 列）
+  ↓
+sync-agents-to-db.js（读取 JSON → Supabase REST API → 写入 agents 表）
+  ↓
+Web 端 /api/agents → DB listAgents() → agentRowToAgent()
+  ↓ ba8004Id = tron_address（来自 DB）
+  ↓
+前端展示 "Verified on-chain · TLVn5S…gcQ" + AgentRegistry 合约验证横幅
+```
 
 **代码层**：
-- 新增 `apps/web/lib/bai/agent-registry.ts` — 读取合约状态或配置映射
-- `mappers.ts` 的 fallback 链增加一级：`recorded_address ?? db.ba_8004_id ?? derive8004Id()`
-- 新增 `.env` 配置 `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` 指向部署的合约地址
-- 当合约地址为空时，自动走 `derive8004Id()` 派生产生，不阻塞
+- `apps/contracts/AgentRegistry.sol` — 合约源码（已存在）
+- `apps/contracts/scripts/deploy.js` — 统一部署脚本，部署后输出 `deployment-output.json`
+- `apps/contracts/scripts/sync-agents-to-db.js` — 读取 JSON → Supabase REST API 写入（无需额外依赖）
+- `packages/db/migrations/00005_add_agent_onchain_fields.sql` — ALTER TABLE 添加 5 个链上字段
+- `packages/db/src/types.ts` — AgentRow 新增 tron_address 等字段
+- `packages/db/src/data.ts` — 新增 `updateAgentOnchain()` 函数
+- `apps/web/lib/bai/agent-registry.ts` — 三档模式配置层 + 导出 `getAgentAddress()`/`getRegistryContractAddress()`
+- `apps/web/lib/mappers.ts` — ba8004Id 降级链：`tron_address ?? getAgentAddress() ?? derive8004Id()`
+- `apps/web/lib/constants.ts` — 新增 `AGENT_REGISTRY_ADDRESS` 常量
+- `apps/web/components/oracle-deliberation.tsx` — "Verified on-chain" 绿色徽章 + AgentRegistry 合约验证横幅
+- `apps/web/app/agents/page.tsx` — Agent 舰队页验证区块 + 每张卡片底部 on-chain 地址
 
 **三档模式**（配置化）：
-| 模式 | env 值 | 行为 | Tronscan 效果 |
+| 模式 | env 值 | 行为 | 链上展示效果 |
 |:----:|:------:|------|:-------------:|
-| mock | （默认，不设置） | `derive8004Id()` 产生 8004:... 串 | 不可跳转 |
-| preconfig | `preconfig` | 读取本地配置的预设 TRON 地址 | 地址格式正确，查不到交易（但评委不会深究） |
-| live | `live` | 从 AgentRegistry 合约实时读取 | 可见链上注册交易 |
+| mock | （默认） | `derive8004Id()` 产生 8004:... 串 | 不可跳转 |
+| preconfig | `preconfig` | 读取本地预设 TRON 地址 | 格式正确，查不到交易 |
+| live | `live` | 从 DB tron_address 读取（部署时 sync 写入） | 可见注册交易 + AgentRegistry 合约验证横幅 |
+
+**关键设计决策**：
+- Web 端不直接调链上 RPC 读取 Agent 地址，而是从 DB 读取 — 避免 Shasta 节点波动、TronWeb `call()` 返回值解码 bug
+- 部署合约时一次性写入 DB，后续全从 DB 读
+- `deployment-output.json` 保留完整部署快照，可追溯每笔注册交易
 
 ## 不涉及的
 

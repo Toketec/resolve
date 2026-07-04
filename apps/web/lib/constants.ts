@@ -11,6 +11,10 @@ export const SETTLEMENT_ADDRESS = process.env.NEXT_PUBLIC_SETTLEMENT_ADDRESS || 
 /** USDD TRC-20 地址（Shasta：部署 MockUSDD 后填入，或真实 USDD）。 */
 export const USDD_ADDRESS = process.env.NEXT_PUBLIC_USDD_ADDRESS || "";
 
+/** AgentRegistry 合约地址（部署后填入）。 */
+export const AGENT_REGISTRY_ADDRESS =
+  process.env.NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS || "";
+
 /** Shasta 测试网区块浏览器。 */
 export const TRONSCAN_SHASTA = "https://shasta.tronscan.org";
 

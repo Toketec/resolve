@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Cpu, Globe2, Newspaper, Radio, ShieldCheck, Activity, TrendingUp, TrendingDown, Scale } from "lucide-react";
+import { Cpu, Globe2, Newspaper, Radio, ShieldCheck, Activity, TrendingUp, TrendingDown, Scale, Database, BadgeCheck, ExternalLink } from "lucide-react";
 import { MOCK_AGENTS, MOCK_MARKETS } from "@/lib/mock";
 import { fetchAgents, fetchMarkets } from "@/lib/api-client";
 import { formatPct } from "@/lib/utils";
+import { AGENT_REGISTRY_ADDRESS, TRONSCAN_SHASTA } from "@/lib/constants";
 import type { Agent, Market } from "@/lib/types";
 
 const KIND_ICON: Record<string, React.ReactNode> = {
@@ -47,6 +48,12 @@ export default async function AgentsPage() {
   } catch {
     /* 保持 mock 兜底 */
   }
+
+  // 检测是否有 Agent 带真实链上地址（DB 已通过 sync 脚本同步）
+  const hasOnchain = agents.some(
+    (a: any) => a.ba8004Id && a.ba8004Id.startsWith("T") && !a.ba8004Id.startsWith("TXYZ"),
+  );
+
   const recent = markets.filter((m) => m.status === "resolved" || m.status === "resolving");
 
   return (
@@ -106,6 +113,39 @@ export default async function AgentsPage() {
           })}
         </div>
 
+        {/* 链上身份验证 — AgentRegistry 合约 */}
+        {AGENT_REGISTRY_ADDRESS && (
+          <a
+            href={`${TRONSCAN_SHASTA}/#/address/${AGENT_REGISTRY_ADDRESS}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-8 flex flex-col gap-3 rounded-2xl border-2 border-pitch-500 bg-pitch-50 p-5 transition hover:-translate-y-0.5 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border-2 border-pitch-500 bg-pitch-100">
+                <Database className="size-5 text-pitch-700" strokeWidth={2.5} />
+              </div>
+              <div>
+                <p className="font-score text-[10px] font-bold uppercase tracking-[0.18em] text-pitch-700">
+                  AgentRegistry · On-chain · Shasta Testnet
+                </p>
+                <p className="font-score mt-0.5 text-xs font-bold text-ink">
+                  {AGENT_REGISTRY_ADDRESS}
+                </p>
+              </div>
+            </div>
+            <span className={`inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border-2 px-3 py-1 text-[10px] font-black uppercase tracking-wider shadow-stamp-sm sm:self-center ${
+              hasOnchain
+                ? "border-pitch-500 bg-pitch-500 text-canvas"
+                : "border-ink bg-card text-ink"
+            }`}>
+              <BadgeCheck className="size-3" />
+              {hasOnchain ? "6 agents verified" : "verify on Tronscan"}
+              <ExternalLink className="size-3" />
+            </span>
+          </a>
+        )}
+
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((a, i) => {
             const tone = TONE_BY_INDEX[i % TONE_BY_INDEX.length];
@@ -157,6 +197,15 @@ export default async function AgentsPage() {
                   </div>
                   <span>$HTX earned · {(a.htxEarned ?? 0).toLocaleString()} USDD</span>
                   <span>{a.region}</span>
+                  {/* 链上身份地址 — 数据来自 DB tron_address */}
+                  {((a as any).ba8004Id &&
+                    (a as any).ba8004Id.startsWith("T") &&
+                    !(a as any).ba8004Id.startsWith("TXYZ")) && (
+                    <span className="inline-flex items-center gap-1">
+                      <BadgeCheck className="size-2.5 shrink-0 text-pitch-600" />
+                      <span className="truncate">on-chain · {(a as any).ba8004Id.slice(0, 6)}…{(a as any).ba8004Id.slice(-4)}</span>
+                    </span>
+                  )}
                 </div>
               </div>
             );

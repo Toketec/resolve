@@ -22,16 +22,21 @@
 
 | # | 任务 | 文件 | 状态 | Done 检查条件 |
 |:-:|------|------|:----:|---------------|
-| C01 | 创建 AgentRegistry.sol | `apps/contracts/AgentRegistry.sol` | ☐ | 合约编译通过；含 register/getAgent 函数和 Registered 事件 |
-| C02 | 部署脚本 + 注册 6 Agent | `apps/contracts/scripts/deployAgentRegistry.js` | ☐ | 部署到 Shasta 后 6 次 register() 调用成功；合约地址可查 |
-| C03 | 前端配置层 bai/agent-registry.ts | `apps/web/lib/bai/agent-registry.ts` | ☐ | 三档模式（mock/preconfig/live）可用；typecheck 通过 |
-| C04 | 修改 mappers.ts fallback 链 | `apps/web/lib/mappers.ts` | ☐ | getAgentAddress() 作为中间层，不打破现有 mock 降级 |
-| C05 | 环境变量 + .env.example | `.env.example` | ☐ | AGENT_REGISTRY_MODE 和 AGENT_REGISTRY_ADDRESS 条目存在 |
+| C01 | 创建 AgentRegistry.sol | `apps/contracts/AgentRegistry.sol` | ✅ | 合约编译通过；含 register/getAgent 函数和 Registered 事件 |
+| C02 | 统一部署脚本（deploy.js）+ 产出 JSON | `apps/contracts/scripts/deploy.js` | ✅ | 部署到 Shasta 后 6 次 register() 成功；输出 `deployment-output.json`；feeLimit 10 TRX 防 OUT_OF_ENERGY |
+| C02b | DB Migration 00005（添加链上字段） | `packages/db/migrations/00005_add_agent_onchain_fields.sql` | ✅ | agents 表新增 tron_address / deployment_tx_hash / registry_contract / deployment_status / deployed_at 列 |
+| C02c | DB TypeScript 类型 + data.ts 更新 | `packages/db/src/types.ts` + `packages/db/src/data.ts` | ✅ | AgentRow 新增 5 字段；updateAgentOnchain() 导出 |
+| C02d | 同步脚本 sync-agents-to-db.js | `apps/contracts/scripts/sync-agents-to-db.js` | ✅ | 读取 deployment-output.json → Supabase REST API 写入；typecheck 通过 |
+| C03 | 前端配置层 bai/agent-registry.ts | `apps/web/lib/bai/agent-registry.ts` | ✅ | 三档模式（mock/preconfig/live）；导出 getAgentAddress()/getRegistryContractAddress()；typecheck 通过 |
+| C04 | 修改 mappers.ts fallback 链 | `apps/web/lib/mappers.ts` | ✅ | ba8004Id 降级链：tron_address → getAgentAddress() → derive8004Id() |
+| C05 | 环境变量 + constants.ts | `apps/web/.env` + `apps/web/lib/constants.ts` | ✅ | AGENT_REGISTRY_ADDRESS 导出；.env 含 MODE=live + 合约地址 |
+| C06 | OracleDeliberation 链上验证 UI | `apps/web/components/oracle-deliberation.tsx` | ✅ | AgentRegistry 合约验证横幅 + "Verified on-chain" 绿色徽章；不调链上 RPC，从 DB 读 |
+| C07 | Agents 舰队页链上验证区块 | `apps/web/app/agents/page.tsx` | ✅ | 合约验证横幅 + 每张卡片底部 on-chain 地址行 |
 
 ## 全局验证
 
 | # | 任务 | 命令 | 状态 | Done 检查条件 |
 |:-:|------|------|:----:|---------------|
-| V01 | `pnpm typecheck` | `pnpm typecheck` | ☐ | 零错误零警告 |
-| V02 | `pnpm build` | `pnpm build` | ☐ | 22 条路由全部构建成功 |
-| V03 | 手动验收 | 浏览器（按 check.md） | ☐ | 所有验收步骤通过 |
+| V01 | `pnpm typecheck` | `pnpm typecheck` | ✅ | 全 4 包零错误零警告 |
+| V02 | `pnpm build` | `pnpm build` | ⚠️ | Google Fonts 网络超时导致 next/font 失败（与代码改动无关） |
+| V03 | 手动验收 | 浏览器（按 check.md） | ⏳ | 待 Supabase migration 执行 + sync 脚本运行后验收 |

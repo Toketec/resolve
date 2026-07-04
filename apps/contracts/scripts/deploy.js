@@ -74,10 +74,14 @@ async function deployAgentRegistry(tronWeb, deployer) {
   console.log("\n注册 6 个 Agent（使用部署者地址）…");
   const registry = await tronWeb.contract(abi, addr);
 
+  /** @type {{ agentId: string, address: string, txHash: string }[]} */
+  const agents = [];
+
   for (const id of AGENTS) {
     try {
-      const tx = await registry.register(id, deployer).send({ feeLimit: 1_000_000 });
+      const tx = await registry.register(id, deployer).send({ feeLimit: 10_000_000 });
       console.log(`  ✓ ${id} → ${deployer}  (tx: ${tx.slice(0, 10)}…)`);
+      agents.push({ agentId: id, address: deployer, txHash: tx });
     } catch (e) {
       console.error(`  ✗ ${id} 注册失败: ${e.message}`);
     }
@@ -91,8 +95,24 @@ async function deployAgentRegistry(tronWeb, deployer) {
     } catch {}
   }
 
+  // 输出部署 JSON（供 sync-agents-to-db.js 读取写入 Supabase）
+  const deploymentJson = {
+    network: tronWeb.fullHost,
+    deployer,
+    contract: "AgentRegistry",
+    contractAddress: addr,
+    deployedAt: new Date().toISOString(),
+    agents,
+  };
+  const outputPath = path.join(__dirname, "..", "deployment-output.json");
+  fs.writeFileSync(outputPath, JSON.stringify(deploymentJson, null, 2), "utf8");
+  console.log(`\n✓ 部署信息已写入 ${path.relative(process.cwd(), outputPath)}`);
+
   console.log(`\n📋 NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS="${addr}"`);
   console.log(`📋 NEXT_PUBLIC_AGENT_REGISTRY_MODE=live`);
+  console.log(`\n下一步:`);
+  console.log(`  1. Supabase SQL Editor 执行: packages/db/migrations/00005_add_agent_onchain_fields.sql`);
+  console.log(`  2. 同步到数据库:           node scripts/sync-agents-to-db.js`);
   return addr;
 }
 

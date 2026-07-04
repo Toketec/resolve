@@ -19,6 +19,7 @@ export {
   insertVotes,
   listAgents,
   getAgentById,
+  updateAgentOnchain,
   upsertPoolState,
   getPoolStateByMarketId,
   listLatestPoolStates,

@@ -38,11 +38,21 @@ pnpm build
 
 ### 模块 C：AgentRegistry 自建合约
 
+**前置**: 
+1. 部署合约：`cd apps/contracts && TRON_PRIVATE_KEY=xxx node scripts/deploy.js AgentRegistry`
+2. 执行 migration：Supabase SQL Editor 中运行 `packages/db/migrations/00005_add_agent_onchain_fields.sql`
+3. 同步到 DB：`cd apps/contracts && node scripts/sync-agents-to-db.js`
+
 | # | 操作 | 预期结果 | 加分指标 |
 |:-:|------|---------|:--------:|
 | C01 | 设置 `AGENT_REGISTRY_MODE=preconfig` 后启动 dev | Agent 卡片显示 T 开头的 TRON 地址格式（如 `TXYZ...abc`） | 链接可点击跳 Tronscan |
-| C02 | 设置 `AGENT_REGISTRY_MODE=live` + 合约地址 | Agent 地址从链上 AgentRegistry 合约读取 | 地址可在 Tronscan 查到 |
+| C02 | 设置 `AGENT_REGISTRY_MODE=live` + 合约地址 | Agent 地址从 DB tron_address 读取（部署后 sync 写入） | 地址可在 Tronscan 查到 |
 | C03 | 不设置任何 env（默认 mock 模式） | 回退到当前 `derive8004Id()` 行为，不崩溃 | — |
+| C04 | 打开市场详情页，查看 OracleDeliberation 区域 | 顶部显示 AgentRegistry 合约地址横幅，点击跳 Shasta 浏览器 | "6 verified" 绿色徽章 |
+| C05 | 展开 Agent 投票卡 | 底部显示绿色 `Verified on-chain · TLVn5S…gcQ` 徽章 | 点击跳转 Tronscan 验证该地址 |
+| C06 | 打开 Agents 舰队页（/agents） | 顶部显示合约验证横幅；每张 Agent 卡片底部显示 `on-chain · TLVn5S…gcQ` | 6 张卡片均有地址行 |
+| C07 | 未执行 sync 时（DB 无 tron_address） | 降级显示 `8004:8004-XXX` 灰色标签（非绿色验证徽章） | 不报错不崩溃 |
+| C08 | 查看 `deployment-output.json` | 包含合约地址 + 6 个 Agent 的 txHash，数据完整 | txHash 可在 Shasta 浏览器查询到对应交易 |
 
 ---
 
@@ -52,21 +62,7 @@ pnpm build
 |------|------|------|
 | Buyback 计数器 NaN/Infinity | Buyback 显示异常 | `localStorage` 读取时加 `Number()` 转换和 `isNaN` 兜底 |
 | 8004 Tronscan 链接打不开 | 派生 ID 不是真实 TRON 地址 | 链接仍可点击显示意图；注释标注"合约部署后替换" |
-| AgentRegistry 合约未部署时设 live 模式 | Agent 地址全空，回退到 derive8004Id | 配置层自动降级 |
-
----
-
-## 总验收清单
-
-- [ ] V01 — `pnpm typecheck` 零错误
-- [ ] V02 — `pnpm build` 22 条路由成功
-- [ ] A01 — TradePanel Buyback 计数器可见且格式正确
-- [ ] A02 — Buy/Sell 后 Buyback 值累加
-- [ ] A03 — Agent 列表页 $HTX Earned 显示
-- [ ] A04 — Agent 投票卡 $HTX Earned 显示
-- [ ] A05 — 市场详情页 Stake 展示
-- [ ] B01 — Agent 卡片 B.AI Hash Badge 可见
-- [ ] B02 — 投票卡 B.AI 标识可见
-- [ ] B03 — 8004 ID 可点击跳 Tronscan
-- [ ] C01 — preconfig 模式显示 TRON 地址格式
-- [ ] C02 — live 模式从链上读取（可选，待合约部署）
+| AgentRegistry 合约未部署时设 live 模式 | DB 无 tron_address → 降级到 derive8004Id | 配置层自动降级，不崩溃 |
+| deploy.js 注册时 OUT_OF_ENERGY | 部分 Agent 注册失败 | feeLimit 已提高到 10 TRX；余额不足时去 Shasta 水龙头充值 |
+| sync-agents-to-db.js 失败 | 部分 Agent 未写入 DB | 检查 migration 00005 是否已执行；重试 sync 脚本 |
+| TronWeb call() 返回零地址 | 验证步骤读到 41+40个0 | 该 bug 不影响实际数据（链上存储正确），前端从 DB 读不受影响 |

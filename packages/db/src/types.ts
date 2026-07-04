@@ -90,6 +90,12 @@ export interface AgentRow {
   ba_8004_id: string | null;
   powered_by: string | null;
   sort_order: number;
+  // 链上部署字段（migration 00005）
+  tron_address: string | null;
+  deployment_tx_hash: string | null;
+  registry_contract: string | null;
+  deployment_status: 'pending' | 'deployed' | 'failed' | null;
+  deployed_at: string | null;
   created_at: string;
   updated_at: string;
 }

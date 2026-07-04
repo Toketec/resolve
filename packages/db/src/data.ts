@@ -346,6 +346,29 @@ export async function getAgentById(agentId: string): Promise<AgentRow | null> {
   return data as AgentRow;
 }
 
+/** 更新单个 Agent 的链上部署信息 */
+export async function updateAgentOnchain(
+  agentId: string,
+  input: {
+    tron_address: string;
+    deployment_tx_hash: string;
+    registry_contract: string;
+  },
+): Promise<void> {
+  const { error } = await getAnyClient()
+    .from('agents')
+    .update({
+      tron_address: input.tron_address,
+      deployment_tx_hash: input.deployment_tx_hash,
+      registry_contract: input.registry_contract,
+      deployment_status: 'deployed',
+      deployed_at: new Date().toISOString(),
+    })
+    .eq('agent_id', agentId);
+
+  if (error) throw new Error(`Failed to update agent ${agentId}: ${error.message}`);
+}
+
 // ── 池状态 (market_pool_states) ─────────────────────────────────
 
 /** 插入或更新某市场的池状态（基于 market_id UNIQUE 约束 upsert）。 */

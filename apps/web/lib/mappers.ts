@@ -156,7 +156,9 @@ export function agentRowToAgent(row: AgentRow): ApiAgent {
     tier: row.tier,
     stance: row.stance,
     poweredBy: row.powered_by ?? "GPT",
-    ba8004Id: getAgentAddress(row.agent_id, row.ba_8004_id) ?? derive8004Id(row.agent_id),
+    ba8004Id: row.tron_address
+      ?? getAgentAddress(row.agent_id, row.ba_8004_id)
+      ?? derive8004Id(row.agent_id),
   };
 }
 
